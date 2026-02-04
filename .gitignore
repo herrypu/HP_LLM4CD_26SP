@@ -205,3 +205,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# --- Hardware Simulation & LLM Logic ---
+*.vcd           # 仿真波形文件
+*.vvp           # Icarus Verilog 编译结果 [cite: 12, 60]
+*.log           # 仿真运行日志 [cite: 18, 82]
+design.v        # 如果是通过 Python 自动生成的临时文件 [cite: 91]
+.env            # 存放 API Key 的环境变量文件（千万别传！）
+.ipynb_checkpoints/ # Jupyter 自动保存的检查点
