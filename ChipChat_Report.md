@@ -47,9 +47,44 @@ All test cases passed!
 
 ## 4. Example B Report 
 ### a. Final Prompt
+```
+I am trying to create a Verilog model named "sequence_detector".
+It must meet the following hardware specifications to pass the testbench:
+
+    - Port Names (Strict):
+        - Clock: "clk"
+        - Reset: "reset_n" (Active-low reset)
+        - Input Data: "data" (3 bits)
+        - Output: "sequence_found" (1 bit)
+
+    - Detection Sequence:
+        Detect the 8-step sequence: 001, 101, 110, 000, 110, 110, 011, 101.
+
+    - Critical Timing Requirement:
+        The "sequence_found" output must be a MEALY-TYPE output (combinational logic). 
+        It MUST go high in the SAME clock cycle that the 8th value (0b101) is received. 
+        Do not use a registered output for sequence_found as it introduces a one-cycle delay.
+
+    - Standard: Use synthesizable Verilog (always @(*) and always @(posedge clk)).
+```
 ### b. Final Module Interface
+```verilog
+    input wire clk,
+    input wire reset_n,      // Active-low reset
+    input wire [2:0] data,   // 3-bit input data
+    output reg sequence_found  // Mealy output
+```
 ### c. Design Approach
+The design implements a Mealy-type Finite State Machine (FSM) to detect a specific 8-step binary sequence through 3-bit input data. To meet the critical timing requirement of asserting the output in the same cycle as the final input, the architecture uses one-hot encoding for its states (comprising S_IDLE and S_STEP1 through S_STEP7). The logic is divided into two primary blocks: a sequential always block for stable state transitions and a combinational always @(*) block for next-state determination and immediate output generation. By assigning the sequence_found signal in the combinational block based on the current state (S_STEP7) and the immediate value of the input data (3'b101), the design eliminates the one-cycle registration delay characteristic of Moore-type outputs. Additionally, the state machine is robust, featuring a synchronous restart to S_STEP1 whenever the first value of the sequence (001) is re-encountered during detection.
 ### d. Verification Results
+Command:
+```
+!cd binary_to_bcd/ && iverilog -g2012 -o binary_to_bcd.vvp binary_to_bcd.v binary_to_bcd_tb.v && vvp binary_to_bcd.vvp
+```
+Outcome:
+```
+All test cases passed!
+```
 ### f. Iteration Table
 #### Iteration #1
 ##### (1) What Failed
@@ -61,13 +96,19 @@ A higher token limit allows the model to complete the entire module structure.
 
 #### Iteration #2
 ##### (1) What Failed
+The iverilog compiler reported that reset_n and sequence_found are not ports of the design under test (dut). This is because the LLM generated a module using rst_n and seq_found as port names, while the provided testbench expects the full names reset_n and sequence_found.
 ##### (2) What I changed to fix
+I refined the verilog_generation_prompt to explicitly specify the required port names and widths, ensuring strict adherence to the testbench interface.
 ##### (3) Why I Expect it to help
+Providing a precise hardware specification (Spec) in the prompt forces the LLM to align its output with the existing verification environment, eliminating manual port renaming.
 
 #### Iteration #3
 ##### (1) What Failed
+Functional Mismatch (Cycle 8 Delay). The simulation failed with Error: Cycle 8, Expected: 1, Got: 0. This occurred because the LLM generated a Moore-type FSM with a registered output, causing the sequence_found signal to appear one cycle later than the testbench expected.
 ##### (2) What I changed to fix
+I updated the prompt to explicitly request a Mealy-type output, requiring the sequence_found signal to be driven by combinational logic so it asserts in the same cycle as the final sequence input.
 ##### (3) Why I Expect it to help
+By removing the output register, the timing of the "found" signal aligns perfectly with the testbench's sampling window at the 8th clock cycle.
 
 ## 5. Extension Report
 ### a. Final Prompt
