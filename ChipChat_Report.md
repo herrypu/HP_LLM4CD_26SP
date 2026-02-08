@@ -1,10 +1,10 @@
 # ChipChat Report 
 Heng Pu  
-netid: hp2723
+Netid: hp2723
 
 ## 1. Choice of Examples and Extension
-Example A: Example 1 - binary_to_bcd (combinational converter)  
-Example B:  
+Example A: Example 1 - binary_to_bcd  
+Example B:  Example 2 - sequence_detector  
 Extension:
 
 ## 2. Model Used and Generation Parameters
@@ -113,5 +113,39 @@ By removing the output register, the timing of the "found" signal aligns perfect
 ## 5. Extension Report
 ### a. Final Prompt
 ### b. Final Module Interface
+Parameters:
+
+    DATA_WIDTH: Width of each input element (Default: 3).
+
+    SEQ_LEN: Total length of the target sequence (Default: 8).
+
+    TARGET_SEQ: Concatenated target sequence bits.
+
+Ports:
+
+    clk, reset_n (Active-low reset), data [DATA_WIDTH-1:0] (Inputs).
+
+    sequence_found (Output).
 ### c. Design Approach
-### d. Verification Results
+The design utilizes a Parameterized Finite State Machine (FSM) approach to ensure flexibility. A generate block is employed to slice the TARGET_SEQ parameter into a 1D array of sequence elements (seq_elements), allowing the FSM logic to dynamically reference specific segments based on the current state. The state transition logic uses a binary counter for state representation, comparing the incoming data with the corresponding seq_elements[state]. Crucially, the design implements Mealy-type logic for the sequence_found signal, which is asserted combinationally in the same clock cycle as the final sequence match to eliminate output delay.
+### d. Test Bench
+The verification environment (tb_code_v3_fixed) instantiates three separate instances of the sequence_detector_ext with varying parameters to validate scalability:
+
+    dut_1: Default configuration (3-bit data, length 8).
+
+    dut_2: Custom configuration (4-bit hex data, length 5).
+
+    dut_3: Short sequence (2-bit data, length 3). The testbench uses modular tasks (send_sequence_1/2/3) to drive stimulus and checks for the immediate assertion of sequence_found after each sequence completion.
+### e. Verification Results
+The simulation was performed using iverilog -g2012. The log confirms that the single RTL source code successfully adapted to all three unique hardware configurations:
+Plaintext
+```
+Test 1: Default Pattern
+  PASS
+Test 2: 4-bit Hex
+  PASS
+Test 3: Short Seq
+  PASS
+```
+### f. Explanation and Impact
+Transitioning from a hard-coded FSM to a parameterized architecture significantly enhances design reusability. By using generate blocks and parameter slicing, the same module can now be deployed for vastly different detection tasks without modifying the underlying RTL. This abstraction demonstrates a professional hardware design flow where "specification change" is handled via top-level parameter overrides rather than manual logic redesign, greatly reducing the potential for human error during iterations.
