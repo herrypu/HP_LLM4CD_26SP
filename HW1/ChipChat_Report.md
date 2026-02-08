@@ -79,7 +79,7 @@ The design implements a Mealy-type Finite State Machine (FSM) to detect a specif
 ### d. Verification Results
 Command:
 ```
-!cd binary_to_bcd/ && iverilog -g2012 -o binary_to_bcd.vvp binary_to_bcd.v binary_to_bcd_tb.v && vvp binary_to_bcd.vvp
+!cd sequence_detector/ && iverilog -g2012 -o sequence_detector.vvp sequence_detector.v sequence_detector_tb.v && vvp sequence_detector.vvp
 ```
 Outcome:
 ```
@@ -110,8 +110,29 @@ I updated the prompt to explicitly request a Mealy-type output, requiring the se
 ##### (3) Why I Expect it to help
 By removing the output register, the timing of the "found" signal aligns perfectly with the testbench's sampling window at the 8th clock cycle.
 
-## 5. Extension Report
+## 5. Extension 
+(Parameterizing Example 2: Sequence Detector)
 ### a. Final Prompt
+```
+I want to extend the sequence_detector design to be fully parameterized.
+The new module should be named "sequence_detector_ext".
+
+Specifications:
+1. Parameters:
+   - DATA_WIDTH: Default is 3 (width of input data).
+   - SEQ_LEN: Default is 8 (number of steps in the sequence).
+   - TARGET_SEQ: A parameter that holds the entire concatenated sequence.
+     Default should be the concatenation of: 0b001, 101, 110, 000, 110, 110, 011, 101.
+
+2. Logic Requirements:
+   - Port Names: clk, reset_n, data [DATA_WIDTH-1:0], sequence_found.
+   - Design Style: Use a shift-register window approach OR a generic FSM that references TARGET_SEQ.
+   - Timing: Must be a Mealy-type output (combinational) that asserts "sequence_found"
+     in the SAME cycle the last element of the sequence is matched.
+
+3. Synthesizability:
+   - Must use synthesizable Verilog (always @(posedge clk) and always @(*)).
+```
 ### b. Final Module Interface
 Parameters:
 
