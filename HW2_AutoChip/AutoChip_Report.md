@@ -89,4 +89,13 @@ module top_module (
     }
 }
 ```
+**Imposrtant Parameters**
+* Model name: gpt-4o-mini  
+* Max iterations: 5
+* Num of candidates: 5  
+  
 ### 3. Trajectory
+In the initial attempt (Iteration 0), the model struggled with the sequential logic of the Arbiter circuit. While the code was syntactically correct, all five candidates failed the functional verification. Response 2 was the most promising, with only 4 mismatches out of 1054 samples. AutoChip then provided the simulation mismatch details as feedback to the model. In Iteration 1, the model successfully interpreted the feedback, corrected the state transition logic, and produced a final RTL that passed all 1054 test samples with zero mismatches.
+
+## Part 3  Manual Design
+### 7420 RTL
