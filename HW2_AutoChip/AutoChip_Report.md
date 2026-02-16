@@ -310,12 +310,27 @@ module sequence_detector (
 endmodule
 ```
 ### 2. Design Choices Expalnation
+I implemented the sequence detector using a standard Finite State Machine (FSM) approach. I chose a two-block design because it keeps the code clean and easy to read.
 
+* State Memory: I used an always_ff block for the sequential logic to handle clock edges and the active-low reset.
+
+* Next-State and Output Logic: I used an always_comb block for the combinational logic. Because the hardware requires a Mealy output that goes high in the exact same cycle the 8th value is received, I placed the sequence_found = 1'b1 assignment directly inside this combinational block during the final state evaluation.
+
+* State Encoding: I used a SystemVerilog typedef enum to name the states (IDLE through S7). This makes debugging much easier than using raw binary numbers.
+
+* Error Recovery: To properly handle overlapping or broken sequences, I added an else if (data == 3'b001) condition in every state. If the sequence breaks but the input happens to be the start of a new sequence, the FSM will correctly jump back to the first step instead of going all the way to IDLE.
 
 ### 3. Testing and Result
+#### Testbench
+* Tested in file HumanSVTesting.ipynb
+* Used same test bench as in example2
 #### Testing Command
-```python
-
+```bash
+iverilog -Wall -Winfloop -Wno-timescale -g2012 -s tb -o sequence_detector.vvp sequence_detector.v sequence_detector_tb.v
+vvp -n sequence_detector.vvp
 ```
 #### Output
+```
+Mismatches: 0 in 12 samples
+```
 
