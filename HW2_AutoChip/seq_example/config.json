@@ -1,0 +1,13 @@
+{
+  "general": {
+    "prompt": "prompt.txt",
+    "name": "sequence_detector",
+    "testbench": "sequence_detector_tb.v",
+    "outdir": "outputs_seq",
+    "log": "log.txt",
+    "model_family": "ChatGPT",
+    "model_id": "gpt-4o-mini",
+    "iterations": 10,
+    "num_candidates": 5
+  }
+}

@@ -1,0 +1,7 @@
+Create a Verilog model named 'sequence_detector'.
+It must meet the following hardware specifications:
+- Port Names: input wire clk, input wire reset_n (Active-low), input wire [2:0] data, output reg sequence_found.
+- Detection Sequence: Detect the 8-step sequence: 001, 101, 110, 000, 110, 110, 011, 101.
+- Critical Timing Requirement: The 'sequence_found' output must be a MEALY-TYPE output. It MUST go high in the SAME clock cycle that the 8th value (101) is received. Do not use a registered output for sequence_found.
+
+HINT: Use a standard Finite State Machine (FSM) approach. Use `always @(posedge clk or negedge reset_n)` for state transitions, and a separate `always @(*)` block for the next-state logic and the Mealy output `sequence_found`. Ensure that partial sequence matches and overlaps are handled properly.
