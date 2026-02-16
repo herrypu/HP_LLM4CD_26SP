@@ -13,12 +13,13 @@ These notebooks contain the final prompts, generated Verilog code, and simulatio
 
 ## HW2_AutoChip
 ### Final Reports
-* **[AutoChip_Report.pdf](./HW2_AutoChip/AutoChip_Report.pdf)**: The comprehensive final report covering the AutoChip generation trajectories, iteration logs, and manual RTL design explanations.
+* **[AutoChip_Report.pdf](./HW2_AutoChip/AutoChip_Report.pdf)**: The comprehensive final report covering the AutoChip generation trajectories, iteration logs, and manual RTL design explanations.(Markdown version also available: **[AutoChip_Report.md](./HW2_AutoChip/AutoChip_Report.md)**).
 
 ### Implementation Notebooks
 These notebooks contain the AutoChip workflow, generated Verilog code, automated iterations, and simulation results:
 * **[example1.ipynb](./HW2_AutoChip/example1.ipynb)**: Example 1 (Binary-to-BCD Converter) using the AutoChip trajectory.
 * **[example2.ipynb](./HW2_AutoChip/example2.ipynb)**: Example 2 (Sequence Detector - Mealy FSM) using the AutoChip trajectory.
+* **[HumanSVTesting.ipynb](./HW2_AutoChip/HumanSVTesting.ipynb)**: PartB Handwrting Sequence Detector SV RTL Testbench Testing
 
 ### Project Structure
 
