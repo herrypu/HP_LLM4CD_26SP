@@ -1,0 +1,4492 @@
+
+<file path="pack_repo.py">
+import os
+
+# --- 配置区 ---
+OUTPUT_FILE = "repo_analysis_data.txt"
+# 定义你想包含的文件后缀，留空则处理所有文本文件
+INCLUDE_EXTENSIONS = {'.v', '.sv', '.py', '.c', '.cpp', '.h', '.md', '.json', '.sh'}
+# 定义要排除的文件夹
+EXCLUDE_DIRS = {'.git', '__pycache__', 'node_modules', 'dist', 'build'}
+
+def pack_repo():
+    counter = 0
+    with open(OUTPUT_FILE, 'w', encoding='utf-8') as outfile:
+        for root, dirs, files in os.walk('.'):
+            # 过滤掉不需要的目录
+            dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
+            
+            for file in files:
+                ext = os.path.splitext(file)[1].lower()
+                if INCLUDE_EXTENSIONS and ext not in INCLUDE_EXTENSIONS:
+                    continue
+                
+                file_path = os.path.join(root, file)
+                rel_path = os.path.relpath(file_path, '.')
+                
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        # 使用 XML 风格的标签，这是目前 AI（尤其是 Gemini/Claude）最喜欢的格式
+                        outfile.write(f"\n<file path=\"{rel_path}\">\n")
+                        outfile.write(content)
+                        outfile.write(f"\n</file>\n")
+                        counter += 1
+                        print(f"已处理: {rel_path}")
+                except Exception as e:
+                    print(f"跳过二进制或无法读取的文件: {rel_path}")
+
+    print(f"\n完成！已将 {counter} 个文件打包至: {OUTPUT_FILE}")
+
+if __name__ == "__main__":
+    pack_repo()
+</file>
+
+<file path="README.md">
+# HP_LLM4CD_S6SP
+@Tandon NYU
+
+## HW1_ChipChat
+### Final Reports
+* **[ChipChat_Report.pdf](./HW1_ChipChat/ChipChat_Report.pdf)**: The comprehensive final report covering all examples, iteration logs, and extension analysis. (Markdown version also available: **[ChipChat_Report.md](./HW1_ChipChat/ChipChat_Report.md)**).
+
+### Implementation Notebooks
+These notebooks contain the final prompts, generated Verilog code, and simulation results (iverilog):
+* **[chipchat_exampleA.ipynb](./HW1_ChipChat/chipchat_exampleA.ipynb)**: Example A (Binary-to-BCD Converter).
+* **[chipchat_exampleB.ipynb](./HW1_ChipChat/chipchat_exampleB.ipynb)**: Example B (Sequence Detector - Mealy FSM).
+* **[chipchat_extension.ipynb](./HW1_ChipChat/chipchat_extension.ipynb)**: Extension (Parameterized Sequence Detector with multi-instance verification).
+
+## HW2_AutoChip
+### Final Reports
+* **[AutoChip_Report.pdf](./HW2_AutoChip/AutoChip_Report.pdf)**: The comprehensive final report covering the AutoChip generation trajectories, iteration logs, and manual RTL design explanations.(Markdown version also available: **[AutoChip_Report.md](./HW2_AutoChip/AutoChip_Report.md)**).
+
+### Implementation Notebooks
+These notebooks contain the AutoChip workflow, generated Verilog code, automated iterations, and simulation results:
+* **[example1.ipynb](./HW2_AutoChip/example1.ipynb)**: Example 1 (Binary-to-BCD Converter) using the AutoChip trajectory.
+* **[example2.ipynb](./HW2_AutoChip/example2.ipynb)**: Example 2 (Sequence Detector - Mealy FSM) using the AutoChip trajectory.
+* **[HumanSVTesting.ipynb](./HW2_AutoChip/HumanSVTesting.ipynb)**: PartB Handwrting Sequence Detector SV RTL Testbench Testing
+
+### Project Structure
+
+```text
+.
+├── HW1_ChipChat/
+│   ├── ChipChat_Report.pdf       # HW1 Final consolidated report (PDF)
+│   ├── ChipChat_Report.md        # HW1 Final consolidated report (Markdown)
+│   ├── chipchat_exampleA.ipynb   # HW1 Example A final submission
+│   ├── chipchat_exampleB.ipynb   # HW1 Example B final submission
+│   ├── chipchat_extension.ipynb  # HW1 Part III Extension final submission
+│   ├── hw1log.md                 # HW1 Chat/Iteration logs
+│   ├── Archive/                  # Early attempts and intermediate iterations
+│   └── Docs/                     # Assignment rubric and official tutorial files
+│
+└── HW2_AutoChip/
+    ├── AutoChip_Report.pdf       # HW2 Final consolidated report (PDF)
+    ├── example1.ipynb            # HW2 Example 1 (Binary-to-BCD) notebook
+    ├── example2.ipynb            # HW2 Example 2 (Sequence Detector) notebook
+    ├── bcd_example.zip           # Compressed backup of Example 1 workspace
+    ├── seq_example.zip           # Compressed backup of Example 2 workspace
+    ├── bcd_example/              # Example 1 working directory
+    │   ├── prompt.txt            # Initial hardware specification prompt
+    │   ├── config.json           # AutoChip configuration file
+    │   ├── testbench.v           # Testbench compatible with AutoChip evaluation
+    │   └── outputs_bcd/          # AutoChip generated trajectories and logs
+    │       ├── log.txt           # Main iteration log for Example 1
+    │       └── iter0/            # Candidate responses and simulation results for iteration 0
+    └── seq_example/              # Example 2 working directory
+        ├── prompt.txt            # Initial hardware specification prompt (with FSM hint)
+        ├── config.json           # AutoChip configuration file
+        ├── sequence_detector_tb.v# Modified official testbench for AutoChip
+        └── outputs_seq/          # AutoChip generated trajectories and logs
+            ├── log.txt           # Main iteration log for Example 2
+            └── iter0/            # Candidate responses and simulation results for iteration 0
+</file>
+
+<file path="HW1_ChipChat\ChipChat_Report.md">
+# ChipChat Report 
+Heng Pu  
+Netid: hp2723
+
+## 1. Choice of Examples and Extension
+Example A: Example 1 - binary_to_bcd  
+Example B:  Example 2 - sequence_detector  
+Extension:
+
+## 2. Model Used and Generation Parameters
+model name: deepseek-reasoner  
+max_tockens: 2048  
+temperature: 0.7  
+
+## 3. Example A Report
+### a. Final Prompt
+```
+ I am trying to create a Verilog model named "binary_to_bcd_converter". 
+It must meet the following strict specifications:
+    - Port Names and Widths:
+        - Input: "binary_input" (5-bits)
+        - Output: "bcd_output" (8-bits: 4-bits for the 10's place and 4-bits for the 1's place)
+    - Functional requirements:
+        - The module should convert the 5-bit binary input to its equivalent BCD representation.
+        - For example, if binary_input is 5'd21, bcd_output should be 8'h21.
+
+Please write a synthesizable Verilog design that uses these exact port names.
+```
+### b. Final Module Interface
+```verilog
+input [4:0] binary_input,
+output reg [7:0] bcd_output
+```
+### c. Design Approach
+The LLM provided two distinct synthesizable RTL implementations for this combinational converter. The first approach utilizes a Lookup Table (Case Statement) covering all 32 possible input values (0–31), ensuring highly deterministic timing and clear mapping to BCD values. The second approach uses Combinational Arithmetic Logic, where the tens digit is calculated through a series of conditional comparisons (checks for values ≥ 10, 20, or 30) and the ones digit is derived using modulo 10 arithmetic. The final 8-bit output is formed by concatenating the 4-bit tens and ones registers. Both designs were verified as synthesizable and functionally identical within the 5-bit range.
+
+### d. Verification Results
+
+Command:
+```
+!cd binary_to_bcd/ && iverilog -g2012 -o binary_to_bcd.vvp binary_to_bcd.v binary_to_bcd_tb.v && vvp binary_to_bcd.vvp
+```
+Outcome:
+```
+All test cases passed!
+```
+
+## 4. Example B Report 
+### a. Final Prompt
+```
+I am trying to create a Verilog model named "sequence_detector".
+It must meet the following hardware specifications to pass the testbench:
+
+    - Port Names (Strict):
+        - Clock: "clk"
+        - Reset: "reset_n" (Active-low reset)
+        - Input Data: "data" (3 bits)
+        - Output: "sequence_found" (1 bit)
+
+    - Detection Sequence:
+        Detect the 8-step sequence: 001, 101, 110, 000, 110, 110, 011, 101.
+
+    - Critical Timing Requirement:
+        The "sequence_found" output must be a MEALY-TYPE output (combinational logic). 
+        It MUST go high in the SAME clock cycle that the 8th value (0b101) is received. 
+        Do not use a registered output for sequence_found as it introduces a one-cycle delay.
+
+    - Standard: Use synthesizable Verilog (always @(*) and always @(posedge clk)).
+```
+### b. Final Module Interface
+```verilog
+    input wire clk,
+    input wire reset_n,      // Active-low reset
+    input wire [2:0] data,   // 3-bit input data
+    output reg sequence_found  // Mealy output
+```
+### c. Design Approach
+The design implements a Mealy-type Finite State Machine (FSM) to detect a specific 8-step binary sequence through 3-bit input data. To meet the critical timing requirement of asserting the output in the same cycle as the final input, the architecture uses one-hot encoding for its states (comprising S_IDLE and S_STEP1 through S_STEP7). The logic is divided into two primary blocks: a sequential always block for stable state transitions and a combinational always @(*) block for next-state determination and immediate output generation. By assigning the sequence_found signal in the combinational block based on the current state (S_STEP7) and the immediate value of the input data (3'b101), the design eliminates the one-cycle registration delay characteristic of Moore-type outputs. Additionally, the state machine is robust, featuring a synchronous restart to S_STEP1 whenever the first value of the sequence (001) is re-encountered during detection.
+### d. Verification Results
+Command:
+```
+!cd sequence_detector/ && iverilog -g2012 -o sequence_detector.vvp sequence_detector.v sequence_detector_tb.v && vvp sequence_detector.vvp
+```
+Outcome:
+```
+All test cases passed!
+```
+### f. Iteration Table
+#### Iteration #1
+##### (1) What Failed
+The LLM response was prematurely cut off probably due to the max_tokens limit (2048), resulting in incomplete Verilog syntax. 
+##### (2) What I changed to fix
+I increased the max_tokens parameter to 4096 to ensure full code generation. 
+##### (3) Why I Expect it to help
+A higher token limit allows the model to complete the entire module structure. 
+
+#### Iteration #2
+##### (1) What Failed
+The iverilog compiler reported that reset_n and sequence_found are not ports of the design under test (dut). This is because the LLM generated a module using rst_n and seq_found as port names, while the provided testbench expects the full names reset_n and sequence_found.
+##### (2) What I changed to fix
+I refined the verilog_generation_prompt to explicitly specify the required port names and widths, ensuring strict adherence to the testbench interface.
+##### (3) Why I Expect it to help
+Providing a precise hardware specification (Spec) in the prompt forces the LLM to align its output with the existing verification environment, eliminating manual port renaming.
+
+#### Iteration #3
+##### (1) What Failed
+Functional Mismatch (Cycle 8 Delay). The simulation failed with Error: Cycle 8, Expected: 1, Got: 0. This occurred because the LLM generated a Moore-type FSM with a registered output, causing the sequence_found signal to appear one cycle later than the testbench expected.
+##### (2) What I changed to fix
+I updated the prompt to explicitly request a Mealy-type output, requiring the sequence_found signal to be driven by combinational logic so it asserts in the same cycle as the final sequence input.
+##### (3) Why I Expect it to help
+By removing the output register, the timing of the "found" signal aligns perfectly with the testbench's sampling window at the 8th clock cycle.
+
+## 5. Extension 
+(Parameterizing Example 2: Sequence Detector)
+### a. Final Prompt
+```
+I want to extend the sequence_detector design to be fully parameterized.
+The new module should be named "sequence_detector_ext".
+
+Specifications:
+1. Parameters:
+   - DATA_WIDTH: Default is 3 (width of input data).
+   - SEQ_LEN: Default is 8 (number of steps in the sequence).
+   - TARGET_SEQ: A parameter that holds the entire concatenated sequence.
+     Default should be the concatenation of: 0b001, 101, 110, 000, 110, 110, 011, 101.
+
+2. Logic Requirements:
+   - Port Names: clk, reset_n, data [DATA_WIDTH-1:0], sequence_found.
+   - Design Style: Use a shift-register window approach OR a generic FSM that references TARGET_SEQ.
+   - Timing: Must be a Mealy-type output (combinational) that asserts "sequence_found"
+     in the SAME cycle the last element of the sequence is matched.
+
+3. Synthesizability:
+   - Must use synthesizable Verilog (always @(posedge clk) and always @(*)).
+```
+### b. Final Module Interface
+Parameters:
+
+    DATA_WIDTH: Width of each input element (Default: 3).
+
+    SEQ_LEN: Total length of the target sequence (Default: 8).
+
+    TARGET_SEQ: Concatenated target sequence bits.
+
+Ports:
+
+    clk, reset_n (Active-low reset), data [DATA_WIDTH-1:0] (Inputs).
+
+    sequence_found (Output).
+### c. Design Approach
+The design utilizes a Parameterized Finite State Machine (FSM) approach to ensure flexibility. A generate block is employed to slice the TARGET_SEQ parameter into a 1D array of sequence elements (seq_elements), allowing the FSM logic to dynamically reference specific segments based on the current state. The state transition logic uses a binary counter for state representation, comparing the incoming data with the corresponding seq_elements[state]. Crucially, the design implements Mealy-type logic for the sequence_found signal, which is asserted combinationally in the same clock cycle as the final sequence match to eliminate output delay.
+### d. Test Bench
+The verification environment (tb_code_v3_fixed) instantiates three separate instances of the sequence_detector_ext with varying parameters to validate scalability:
+
+    dut_1: Default configuration (3-bit data, length 8).
+
+    dut_2: Custom configuration (4-bit hex data, length 5).
+
+    dut_3: Short sequence (2-bit data, length 3). The testbench uses modular tasks (send_sequence_1/2/3) to drive stimulus and checks for the immediate assertion of sequence_found after each sequence completion.
+### e. Verification Results
+The simulation was performed using iverilog -g2012. The log confirms that the single RTL source code successfully adapted to all three unique hardware configurations:
+Plaintext
+```
+Test 1: Default Pattern
+  PASS
+Test 2: 4-bit Hex
+  PASS
+Test 3: Short Seq
+  PASS
+```
+### f. Explanation and Impact
+Transitioning from a hard-coded FSM to a parameterized architecture significantly enhances design reusability. By using generate blocks and parameter slicing, the same module can now be deployed for vastly different detection tasks without modifying the underlying RTL. This abstraction demonstrates a professional hardware design flow where "specification change" is handled via top-level parameter overrides rather than manual logic redesign, greatly reducing the potential for human error during iterations.
+</file>
+
+<file path="HW1_ChipChat\hw1log.md">
+# LLM4ChipDesign 
+Heng Pu
+
+### 260402
+Created github repo
+</file>
+
+<file path="HW2_AutoChip\AutoChip_Report.md">
+# ChipChat Report 
+Heng Pu  
+Netid: hp2723  
+
+## Example 1  Binary_to_BCD
+### 1. Initial Prompt  
+```
+Create a Verilog module named 'binary_to_bcd_converter' that converts a 5-bit binary input to an 8-bit BCD output.
+The module should have:
+- Input: [4:0] binary_input
+- Output: [7:0] bcd_output (where the upper 4 bits represent the tens digit and the lower 4 bits represent the ones digit).
+For example, if binary_input is 5'd21, bcd_output should be 8'h21.
+Please provide a synthesizable design.
+```
+### 2. Parameters
+```json
+{
+  "general": {
+    "prompt": "prompt.txt",
+    "name": "binary_to_bcd_converter",
+    "testbench": "testbench.v",
+    "outdir": "outputs_bcd",
+    "log": "log.txt",
+    "model_family": "ChatGPT",
+    "model_id": "gpt-4o-mini",
+    "iterations": 10,
+    "num_candidates": 5
+  }
+}
+```
+**Imposrtant Parameters**
+* **Model**: gpt-4o-mini
+* **Max Iterations**: 10
+* **Number of Candidates**: 5
+  
+### 3. Trajectory 
+
+* **Initial Attempt**: The model tried to use the "Double-Dabble" (shift-and-add-3) algorithm to convert the binary input. However, it made a logic error by shifting the bits before adding 3. 
+* **Feedback Issue**: At first, the testbench only reported the total number of errors (e.g., "Mismatches: 15 in 32 samples"). Without knowing the exact wrong outputs, the model could not fix the bug and got stuck in a loop of failures.
+* **Testbench Improvement**: We updated the testbench to print the exact input, expected output, and actual output for every error. Even with detailed error logs, the model was still stuck on the wrong algorithm.
+* **Prompt Hint & Success**: We added a hint to the prompt: "Since the input is only 5 bits, do NOT use a complex double-dabble algorithm. Use simple arithmetic (division by 10 and modulo 10)." With this hint, the model successfully generated the 100% correct code immediately in Iteration 0.
+
+### 4. Testing and Result
+#### Testbench
+```verilog
+module tb;
+    reg [4:0] binary_input;
+    wire [7:0] bcd_output;
+    integer i, errors;
+    reg [3:0] temp_tens;
+    reg [3:0] temp_ones;
+    reg [7:0] expected_bcd;
+
+    binary_to_bcd_converter uut (
+        .binary_input(binary_input),
+        .bcd_output(bcd_output)
+    );
+
+    initial begin
+        errors = 0;
+        for (i = 0; i < 32; i = i + 1) begin
+            binary_input = i;
+            #10;
+            temp_tens = i / 10;
+            temp_ones = i % 10;
+            expected_bcd = {temp_tens, temp_ones};
+            
+            if (bcd_output !== expected_bcd) begin
+                $display("Error: input %d, expected %h, got %h", i, expected_bcd, bcd_output);
+                errors = errors + 1;
+            end
+        end
+        $display("Mismatches: %d in 32 samples", errors);
+    end
+endmodule
+```
+#### Testing Command
+```bash
+iverilog -Wall -Winfloop -Wno-timescale -g2012 -s tb -o binary_to_bcd_converter.vvp binary_to_bcd_converter.sv testbench.v
+vvp -n binary_to_bcd_converter.vvp
+```
+#### Output
+```
+Mismatches: 0 in 32 samples
+Testbench ran successfully
+```
+
+## Example 2 
+### 1. Initial Prompt
+```
+Create a Verilog model named 'sequence_detector'.
+It must meet the following hardware specifications:
+- Port Names: input wire clk, input wire reset_n (Active-low), input wire [2:0] data, output reg sequence_found.
+- Detection Sequence: Detect the 8-step sequence: 001, 101, 110, 000, 110, 110, 011, 101.
+- Critical Timing Requirement: The 'sequence_found' output must be a MEALY-TYPE output. It MUST go high in the SAME clock cycle that the 8th value (101) is received. Do not use a registered output for sequence_found.
+
+HINT: Use a standard Finite State Machine (FSM) approach. Use `always @(posedge clk or negedge reset_n)` for state transitions, and a separate `always @(*)` block for the next-state logic and the Mealy output `sequence_found`. Ensure that partial sequence matches and overlaps are handled properly.
+```
+### 2. Parameters
+```json
+{
+  "general": {
+    "prompt": "prompt.txt",
+    "name": "sequence_detector",
+    "testbench": "sequence_detector_tb.v",
+    "outdir": "outputs_seq",
+    "log": "log.txt",
+    "model_family": "ChatGPT",
+    "model_id": "gpt-4o-mini",
+    "iterations": 10,
+    "num_candidates": 5
+  }
+}
+```
+**Imposrtant Parameters**
+**Imposrtant Parameters**
+* **Model**: gpt-4o-mini
+* **Max Iterations**: 10
+* **Number of Candidates**: 5
+  
+### 3. Trajectory
+* **Compilation Errors**: Initially, the model's generated code failed to compile because the testbench module was named tb_sequence_detector, but the AutoChip script strictly required the root module to be named tb. All 5 responses in the early iterations received a rank of -1.
+
+* **Testbench Format Issue**: The original testbench stopped the simulation immediately after the first error using $finish. This prevented AutoChip from reading the final mismatch count.
+
+* **Fixes Applied**: We modified the testbench root module name to tb and added an errors counter to print the total number of errors at the end, matching the AutoChip format requirements.
+
+* **Success**: Because we provided a strong hint in the initial prompt to use a standard Finite State Machine (FSM) with separate combinational and sequential logic blocks, the model generated a 100% correct design with 0 mismatches in Iteration 0 right after the testbench was fixed.
+
+### 4. Testing and Result
+#### Testbench
+```verilog
+`timescale 1ns/1ps
+
+module tb(); 
+    reg clk;
+    reg reset_n;
+    reg [2:0] data;
+    wire sequence_found;
+    
+    integer errors; 
+
+    // Instantiate the sequence_detector module
+    sequence_detector dut (
+        .clk(clk),
+        .reset_n(reset_n),
+        .data(data),
+        .sequence_found(sequence_found)
+    );
+
+    // Clock generation
+    always begin
+        #5 clk = ~clk;
+    end
+
+    // Test stimulus task
+    task apply_stimulus;
+        input [2:0] data_value;
+        input integer delay_cycles;
+        begin
+            data <= data_value;
+            repeat (delay_cycles) @(posedge clk);
+        end
+    endtask
+
+    // Check output task
+    task check_output;
+        input integer cycle;
+        input expected_value;
+        begin
+            if (sequence_found !== expected_value) begin
+                $display("Error: Cycle %0d, Expected: %b, Got: %b", cycle, expected_value, sequence_found);
+                errors = errors + 1; 
+            end
+        end
+    endtask
+
+    // Testbench stimulus and checking
+    initial begin
+        // Initialize signals
+        errors = 0;
+        clk <= 0;
+        reset_n <= 0;
+        data <= 3'b000;
+
+        // Apply reset
+        @(posedge clk);
+        reset_n <= 1;
+
+        // Test case: Correct sequence
+        apply_stimulus(3'b001, 1); check_output(1, 1'b0);
+        apply_stimulus(3'b101, 1); check_output(2, 1'b0);
+        apply_stimulus(3'b110, 1); check_output(3, 1'b0);
+        apply_stimulus(3'b000, 1); check_output(4, 1'b0);
+        apply_stimulus(3'b110, 1); check_output(5, 1'b0);
+        apply_stimulus(3'b110, 1); check_output(6, 1'b0);
+        apply_stimulus(3'b011, 1); check_output(7, 1'b0);
+        apply_stimulus(3'b101, 1); check_output(8, 1'b1);
+
+        // Test case: Incorrect sequence
+        apply_stimulus(3'b001, 1); check_output(9, 1'b0);
+        apply_stimulus(3'b101, 1); check_output(10, 1'b0);
+        apply_stimulus(3'b010, 1); check_output(11, 1'b0);
+        apply_stimulus(3'b000, 1); check_output(12, 1'b0);
+
+        // Output format required by AutoChip
+        $display("Mismatches: %d in 12 samples", errors);
+        $finish;
+    end
+endmodule
+```
+#### Testing Command
+```bash
+iverilog -Wall -Winfloop -Wno-timescale -g2012 -s tb -o sequence_detector.vvp sequence_detector.v sequence_detector_tb.v
+vvp -n sequence_detector.vvp
+```
+#### Output
+```
+Mismatches: 0 in 12 samples
+Testbench ran successfully
+```
+
+## Part 3  Manual Design
+### 1.Example 2 Sequence Dectector Handwritten SV RTL
+```sv
+module sequence_detector (
+    input  logic       clk,
+    input  logic       reset_n,
+    input  logic [2:0] data,
+    output logic       sequence_found
+);
+
+    // Define FSM states using SystemVerilog enumerated types
+    typedef enum logic [2:0] {
+        IDLE,
+        S1,
+        S2,
+        S3,
+        S4,
+        S5,
+        S6,
+        S7
+    } state_t;
+
+    state_t current_state, next_state;
+
+    // Sequential block for state memory
+    always_ff @(posedge clk or negedge reset_n) begin
+        if (!reset_n) begin
+            current_state <= IDLE;
+        end else begin
+            current_state <= next_state;
+        end
+    end
+
+    // Combinational block for next state and Mealy output
+    always_comb begin
+        // Default assignments to prevent unintended latches
+        next_state     = IDLE;
+        sequence_found = 1'b0;
+
+        case (current_state)
+            IDLE: begin
+                if (data == 3'b001) next_state = S1;
+            end
+            
+            S1: begin
+                if (data == 3'b101) next_state = S2;
+                else if (data == 3'b001) next_state = S1;
+            end
+            
+            S2: begin
+                if (data == 3'b110) next_state = S3;
+                else if (data == 3'b001) next_state = S1;
+            end
+            
+            S3: begin
+                if (data == 3'b000) next_state = S4;
+                else if (data == 3'b001) next_state = S1;
+            end
+            
+            S4: begin
+                if (data == 3'b110) next_state = S5;
+                else if (data == 3'b001) next_state = S1;
+            end
+            
+            S5: begin
+                if (data == 3'b110) next_state = S6;
+                else if (data == 3'b001) next_state = S1;
+            end
+            
+            S6: begin
+                if (data == 3'b011) next_state = S7;
+                else if (data == 3'b001) next_state = S1;
+            end
+            
+            S7: begin
+                if (data == 3'b101) begin
+                    // Mealy output goes high in the same cycle
+                    sequence_found = 1'b1; 
+                    next_state = IDLE;
+                end
+                else if (data == 3'b001) next_state = S1;
+            end
+            
+            default: next_state = IDLE;
+        endcase
+    end
+
+endmodule
+```
+### 2. Design Choices Expalnation
+I implemented the sequence detector using a standard Finite State Machine (FSM) approach. I chose a two-block design because it keeps the code clean and easy to read.
+
+* State Memory: I used an always_ff block for the sequential logic to handle clock edges and the active-low reset.
+
+* Next-State and Output Logic: I used an always_comb block for the combinational logic. Because the hardware requires a Mealy output that goes high in the exact same cycle the 8th value is received, I placed the sequence_found = 1'b1 assignment directly inside this combinational block during the final state evaluation.
+
+* State Encoding: I used a SystemVerilog typedef enum to name the states (IDLE through S7). This makes debugging much easier than using raw binary numbers.
+
+* Error Recovery: To properly handle overlapping or broken sequences, I added an else if (data == 3'b001) condition in every state. If the sequence breaks but the input happens to be the start of a new sequence, the FSM will correctly jump back to the first step instead of going all the way to IDLE.
+
+### 3. Testing and Result
+#### Testbench
+* Tested in file HumanSVTesting.ipynb
+* Used same test bench as in example2
+#### Testing Command
+```bash
+iverilog -Wall -Winfloop -Wno-timescale -g2012 -s tb -o sequence_detector.vvp sequence_detector.v sequence_detector_tb.v
+vvp -n sequence_detector.vvp
+```
+#### Output
+```
+Mismatches: 0 in 12 samples
+```
+
+
+</file>
+
+<file path="HW2_AutoChip\Archive\7420&arbiter\7420.sv">
+// Module: top_module (7420 Dual 4-input NAND Gate)
+// Description: Implementation of a classic TTL 7420 chip containing two independent 4-input NAND gates.
+
+module top_module (
+    // Gate 1 inputs and output
+    input p1a,
+    input p1b,
+    input p1c,
+    input p1d,
+    output p1y,
+
+    // Gate 2 inputs and output
+    input p2a,
+    input p2b,
+    input p2c,
+    input p2d,
+    output p2y
+);
+
+    // Using continuous assignment for combinational NAND logic
+    // Logic: Y = ~(A & B & C & D)
+    assign p1y = ~(p1a & p1b & p1c & p1d);
+    assign p2y = ~(p2a & p2b & p2c & p2d);
+
+endmodule
+</file>
+
+<file path="HW2_AutoChip\Archive\7420&arbiter\AutoChip_Report.md">
+# ChipChat Report 
+Heng Pu  
+Netid: hp2723  
+
+## Example 1 7420 Chip
+### 1. Initial Prompt  
+```sv
+// The 7400-series integrated circuits are a series of digital chips with a few gates each. The 7420 is a chip with two 4-input NAND gates.
+
+// Create a module with the same functionality as the 7420 chip. It has 8 inputs and 2 outputs.
+
+module top_module(
+	input p1a, 
+	input p1b, 
+	input p1c, 
+	input p1d, 
+	output p1y, 
+	input p2a, 
+	input p2b, 
+	input p2c, 
+	input p2d, 
+	output p2y
+);
+```
+### 2. Parameters
+```json
+{
+	"general": {
+        "prompt": "./7420.sv",
+        "name": "top_module",
+        "testbench": "./7420_tb.sv",
+		"model_family": "ChatGPT",
+		"model_id": "gpt-4o-mini",
+		"num_candidates": 5,
+		"iterations": 5,
+        "outdir": "outputs_7420",
+        "log": "log.txt",
+		"ensemble": false
+    }
+}
+```
+**Imposrtant Parameters**
+* Model name: gpt-4o-mini  
+* Max iterations: 5
+* Num of candidates: 5
+  
+### 3. Trajectory  
+The 7420 generation followed a straightforward path where the gpt-4o-mini model achieved success on the first attempt. After receiving the initial prompt describing the dual 4-input NAND gate, the model produced the complete Verilog code during iteration zero. AutoChip then used the iverilog tool to compile the design and verify it against the testbench. The simulation showed zero mismatches across all 239 samples, meaning the model correctly implemented the combinational logic without requiring any feedback-driven corrections or extra iterations.  
+
+## Example 2 Arbiter Circuit
+### 1. Initial Prompt
+```sv
+// Consider the FSM described by the state diagram shown below:
+
+// A --r1=0,r2=0,r3=0--> A
+// A --r1=1--> B
+// A --r1=0,r2=1--> C
+// A --r1=0,r2=0,r3=0--> D
+// B (g1=1) --r1=1--> B
+// B (g1=1) --r1=0--> A
+// C (g2=1) --r2=1--> C
+// C (g2=1) --r2=0--> A
+
+// Resetn is an active-low synchronous reset that resets into state A. This FSM acts as an arbiter circuit, which controls access to some type of resource by three requesting devices. Each device makes its request for the resource by setting a signal _r[i]_ = 1, where _r[i]_ is either _r[1]_, _r[2]_, or _r[3]_. Each r[i] is an input signal to the FSM, and represents one of the three devices. The FSM stays in state _A_ as long as there are no requests. When one or more request occurs, then the FSM decides which device receives a grant to use the resource and changes to a state that sets that device's _g[i]_ signal to 1. Each _g[i]_ is an output from the FSM. There is a priority system, in that device 1 has a higher priority than device 2, and device 3 has the lowest priority. Hence, for example, device 3 will only receive a grant if it is the only device making a request when the FSM is in state _A_. Once a device, _i_, is given a grant by the FSM, that device continues to receive the grant as long as its request, _r[i]_ = 1.
+
+// Write complete Verilog code that represents this FSM. Use separate always blocks for the state table and the state flip-flops, as done in lectures. Describe the FSM outputs, _g[i]_, using either continuous assignment statement(s) or an always block (at your discretion). Assign any state codes that you wish to use.
+
+module top_module (
+	input clk,
+	input resetn,
+	input [3:1] r,
+	output [3:1] g
+);
+```
+### 2. Parameters
+```json
+{
+	"general": {
+        "prompt": "./2013_q2afsm.sv",
+        "name": "top_module",
+        "testbench": "./2013_q2afsm_tb.sv",
+		"model_family": "ChatGPT",
+		"model_id": "gpt-4o-mini",
+		"num_candidates": 5,
+		"iterations": 5,
+        "outdir": "outputs_arbiter",
+        "log": "log.txt",
+		"ensemble": false
+    }
+}
+```
+**Imposrtant Parameters**
+* Model name: gpt-4o-mini  
+* Max iterations: 5
+* Num of candidates: 5  
+  
+### 3. Trajectory
+In the initial attempt (Iteration 0), the model struggled with the sequential logic of the Arbiter circuit. While the code was syntactically correct, all five candidates failed the functional verification. Response 2 was the most promising, with only 4 mismatches out of 1054 samples. AutoChip then provided the simulation mismatch details as feedback to the model. In Iteration 1, the model successfully interpreted the feedback, corrected the state transition logic, and produced a final RTL that passed all 1054 test samples with zero mismatches.
+
+## Part 3  Manual Design
+### 7420 RTL
+```sv
+// Module: top_module (7420 Dual 4-input NAND Gate)
+// Description: Implementation of a classic TTL 7420 chip containing two independent 4-input NAND gates.
+
+module top_module (
+    // Gate 1 inputs and output
+    input p1a,
+    input p1b,
+    input p1c,
+    input p1d,
+    output p1y,
+
+    // Gate 2 inputs and output
+    input p2a,
+    input p2b,
+    input p2c,
+    input p2d,
+    output p2y
+);
+
+    // Using continuous assignment for combinational NAND logic
+    // Logic: Y = ~(A & B & C & D)
+    assign p1y = ~(p1a & p1b & p1c & p1d);
+    assign p2y = ~(p2a & p2b & p2c & p2d);
+
+endmodule
+```
+### Design Choices Expalnation
+I implemented the dual 4-input NAND gate using continuous assignment (assign) statements. This approach is preferred for simple combinational logic as it directly describes the Boolean relationship without the overhead of procedural blocks, ensuring minimal logic depth and optimal synthesis results.
+
+### Testing and Result
+#### Testing Command
+```python
+
+```
+#### Output
+
+
+</file>
+
+<file path="HW2_AutoChip\Archive\7420&arbiter\7420_example\7420.sv">
+// The 7400-series integrated circuits are a series of digital chips with a few gates each. The 7420 is a chip with two 4-input NAND gates.
+
+// Create a module with the same functionality as the 7420 chip. It has 8 inputs and 2 outputs.
+
+module top_module(
+	input p1a, 
+	input p1b, 
+	input p1c, 
+	input p1d, 
+	output p1y, 
+	input p2a, 
+	input p2b, 
+	input p2c, 
+	input p2d, 
+	output p2y
+);
+
+</file>
+
+<file path="HW2_AutoChip\Archive\7420&arbiter\7420_example\7420_tb.sv">
+`timescale 1 ps/1 ps
+`define OK 12
+`define INCORRECT 13
+module reference_module(
+	input p1a, 
+	input p1b, 
+	input p1c, 
+	input p1d, 
+	output p1y, 
+	input p2a, 
+	input p2b, 
+	input p2c, 
+	input p2d, 
+	output p2y
+);
+	
+	assign p1y = ~&( {p1a, p1b, p1c, p1d} );
+	assign p2y = ~&( {p2a, p2b, p2c, p2d} );
+	
+endmodule
+
+
+module stimulus_gen (
+	input clk,
+	output reg p1a, p1b, p1c, p1d,
+	output reg p2a, p2b, p2c, p2d,
+	output reg[511:0] wavedrom_title,
+	output reg wavedrom_enable
+);
+
+
+// Add two ports to module stimulus_gen:
+//    output [511:0] wavedrom_title
+//    output reg wavedrom_enable
+
+	task wavedrom_start(input[511:0] title = "");
+	endtask
+	
+	task wavedrom_stop;
+		#1;
+	endtask	
+
+
+
+	initial begin
+		int count; count = 0;
+		{p1a,p1b,p1c,p1d} <= 4'h0;		
+		{p2a,p2b,p2c,p2d} <= 4'h0;		
+		wavedrom_start("Two NAND gates");
+		repeat(20) @(posedge clk) begin
+			{p1a,p1b,p1c,p1d} <= count;		
+			{p2a,p2b,p2c,p2d} <= count+1;		
+			count = count + 1;
+		end
+		wavedrom_stop();
+
+		repeat(200) @(posedge clk,negedge clk) begin
+			{p1a,p1b,p1c,p1d,p2a,p2b,p2c,p2d} <= $random;		
+		end
+		
+		#1 $finish;
+	end
+	
+endmodule
+
+module tb();
+
+	typedef struct packed {
+		int errors;
+		int errortime;
+		int errors_p1y;
+		int errortime_p1y;
+		int errors_p2y;
+		int errortime_p2y;
+
+		int clocks;
+	} stats;
+	
+	stats stats1;
+	
+	
+	wire[511:0] wavedrom_title;
+	wire wavedrom_enable;
+	int wavedrom_hide_after_time;
+	
+	reg clk=0;
+	initial forever
+		#5 clk = ~clk;
+
+	logic p1a;
+	logic p1b;
+	logic p1c;
+	logic p1d;
+	logic p2a;
+	logic p2b;
+	logic p2c;
+	logic p2d;
+	logic p1y_ref;
+	logic p1y_dut;
+	logic p2y_ref;
+	logic p2y_dut;
+
+	initial begin 
+		$dumpfile("wave.vcd");
+		$dumpvars(1, stim1.clk, tb_mismatch ,p1a,p1b,p1c,p1d,p2a,p2b,p2c,p2d,p1y_ref,p1y_dut,p2y_ref,p2y_dut );
+	end
+
+
+	wire tb_match;		// Verification
+	wire tb_mismatch = ~tb_match;
+	
+	stimulus_gen stim1 (
+		.clk,
+		.* ,
+		.p1a,
+		.p1b,
+		.p1c,
+		.p1d,
+		.p2a,
+		.p2b,
+		.p2c,
+		.p2d );
+	reference_module good1 (
+		.p1a,
+		.p1b,
+		.p1c,
+		.p1d,
+		.p2a,
+		.p2b,
+		.p2c,
+		.p2d,
+		.p1y(p1y_ref),
+		.p2y(p2y_ref) );
+		
+	top_module top_module1 (
+		.p1a,
+		.p1b,
+		.p1c,
+		.p1d,
+		.p2a,
+		.p2b,
+		.p2c,
+		.p2d,
+		.p1y(p1y_dut),
+		.p2y(p2y_dut) );
+
+	
+	bit strobe = 0;
+	task wait_for_end_of_timestep;
+		repeat(5) begin
+			strobe <= !strobe;  // Try to delay until the very end of the time step.
+			@(strobe);
+		end
+	endtask	
+
+	
+	final begin
+		if (stats1.errors_p1y) $display("Hint: Output '%s' has %0d mismatches. First mismatch occurred at time %0d.", "p1y", stats1.errors_p1y, stats1.errortime_p1y);
+		else $display("Hint: Output '%s' has no mismatches.", "p1y");
+		if (stats1.errors_p2y) $display("Hint: Output '%s' has %0d mismatches. First mismatch occurred at time %0d.", "p2y", stats1.errors_p2y, stats1.errortime_p2y);
+		else $display("Hint: Output '%s' has no mismatches.", "p2y");
+
+		$display("Hint: Total mismatched samples is %1d out of %1d samples\n", stats1.errors, stats1.clocks);
+		$display("Simulation finished at %0d ps", $time);
+		$display("Mismatches: %1d in %1d samples", stats1.errors, stats1.clocks);
+	end
+	
+	// Verification: XORs on the right makes any X in good_vector match anything, but X in dut_vector will only match X.
+	assign tb_match = ( { p1y_ref, p2y_ref } === ( { p1y_ref, p2y_ref } ^ { p1y_dut, p2y_dut } ^ { p1y_ref, p2y_ref } ) );
+	// Use explicit sensitivity list here. @(*) causes NetProc::nex_input() to be called when trying to compute
+	// the sensitivity list of the @(strobe) process, which isn't implemented.
+	always @(posedge clk, negedge clk) begin
+
+		stats1.clocks++;
+		if (!tb_match) begin
+			if (stats1.errors == 0) stats1.errortime = $time;
+			stats1.errors++;
+		end
+		if (p1y_ref !== ( p1y_ref ^ p1y_dut ^ p1y_ref ))
+		begin if (stats1.errors_p1y == 0) stats1.errortime_p1y = $time;
+			stats1.errors_p1y = stats1.errors_p1y+1'b1; end
+		if (p2y_ref !== ( p2y_ref ^ p2y_dut ^ p2y_ref ))
+		begin if (stats1.errors_p2y == 0) stats1.errortime_p2y = $time;
+			stats1.errors_p2y = stats1.errors_p2y+1'b1; end
+
+	end
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\Archive\7420&arbiter\7420_example\config.json">
+{
+	"general": {
+        "prompt": "./7420.sv",
+        "name": "top_module",
+        "testbench": "./7420_tb.sv",
+		"model_family": "ChatGPT",
+		"model_id": "gpt-4o-mini",
+		"num_candidates": 5,
+		"iterations": 5,
+        "outdir": "outputs_7420",
+        "log": "log.txt",
+		"ensemble": false
+    }
+}
+
+</file>
+
+<file path="HW2_AutoChip\Archive\7420&arbiter\arbiter_example\2013_q2afsm.sv">
+// Consider the FSM described by the state diagram shown below:
+
+// A --r1=0,r2=0,r3=0--> A
+// A --r1=1--> B
+// A --r1=0,r2=1--> C
+// A --r1=0,r2=0,r3=0--> D
+// B (g1=1) --r1=1--> B
+// B (g1=1) --r1=0--> A
+// C (g2=1) --r2=1--> C
+// C (g2=1) --r2=0--> A
+
+// Resetn is an active-low synchronous reset that resets into state A. This FSM acts as an arbiter circuit, which controls access to some type of resource by three requesting devices. Each device makes its request for the resource by setting a signal _r[i]_ = 1, where _r[i]_ is either _r[1]_, _r[2]_, or _r[3]_. Each r[i] is an input signal to the FSM, and represents one of the three devices. The FSM stays in state _A_ as long as there are no requests. When one or more request occurs, then the FSM decides which device receives a grant to use the resource and changes to a state that sets that device's _g[i]_ signal to 1. Each _g[i]_ is an output from the FSM. There is a priority system, in that device 1 has a higher priority than device 2, and device 3 has the lowest priority. Hence, for example, device 3 will only receive a grant if it is the only device making a request when the FSM is in state _A_. Once a device, _i_, is given a grant by the FSM, that device continues to receive the grant as long as its request, _r[i]_ = 1.
+
+// Write complete Verilog code that represents this FSM. Use separate always blocks for the state table and the state flip-flops, as done in lectures. Describe the FSM outputs, _g[i]_, using either continuous assignment statement(s) or an always block (at your discretion). Assign any state codes that you wish to use.
+
+module top_module (
+	input clk,
+	input resetn,
+	input [3:1] r,
+	output [3:1] g
+);
+
+</file>
+
+<file path="HW2_AutoChip\Archive\7420&arbiter\arbiter_example\2013_q2afsm_tb.sv">
+`timescale 1 ps/1 ps
+`define OK 12
+`define INCORRECT 13
+module reference_module (
+	input clk,
+	input resetn,
+	input [3:1] r,
+	output [3:1] g
+);
+	parameter A=0, B=1, C=2, D=3;
+	reg [1:0] state, next;
+
+	always @(posedge clk) begin
+		if (~resetn) state <= A;
+		else state <= next;
+	end
+	
+	always@(state,r) begin
+		case (state)
+			A: if (r[1]) next = B;
+			   else if (r[2]) next = C;
+			   else if (r[3]) next = D;
+			   else next = A;
+			B: next = r[1] ? B : A;
+			C: next = r[2] ? C : A;
+			D: next = r[3] ? D : A;
+			default: next = 'x;
+		endcase
+	end
+	    
+	assign g[1] = (state == B);	
+	assign g[2] = (state == C);	
+	assign g[3] = (state == D);	
+endmodule
+
+
+module stimulus_gen (
+	input clk,
+	output logic resetn,
+	output logic [3:1] r,
+	output reg[511:0] wavedrom_title,
+	output reg wavedrom_enable,
+	input tb_match
+);
+	reg reset;
+	assign resetn = ~reset;
+
+	task reset_test(input async=0);
+		bit arfail, srfail, datafail;
+	
+		@(posedge clk);
+		@(posedge clk) reset <= 0;
+		repeat(3) @(posedge clk);
+	
+		@(negedge clk) begin datafail = !tb_match ; reset <= 1; end
+		@(posedge clk) arfail = !tb_match;
+		@(posedge clk) begin
+			srfail = !tb_match;
+			reset <= 0;
+		end
+		if (srfail)
+			$display("Hint: Your reset doesn't seem to be working.");
+		else if (arfail && (async || !datafail))
+			$display("Hint: Your reset should be %0s, but doesn't appear to be.", async ? "asynchronous" : "synchronous");
+		// Don't warn about synchronous reset if the half-cycle before is already wrong. It's more likely
+		// a functionality error than the reset being implemented asynchronously.
+	
+	endtask
+
+
+// Add two ports to module stimulus_gen:
+//    output [511:0] wavedrom_title
+//    output reg wavedrom_enable
+
+	task wavedrom_start(input[511:0] title = "");
+	endtask
+	
+	task wavedrom_stop;
+		#1;
+	endtask	
+
+
+	
+	initial begin
+		reset <= 1;
+		r <= 0;
+		@(posedge clk);
+		
+		r <= 1;
+		reset_test();
+		
+		r <= 0;
+		wavedrom_start("");
+		@(posedge clk) r <= 0;
+		@(posedge clk) r <= 7;
+		@(posedge clk) r <= 7;
+		@(posedge clk) r <= 7;
+		@(posedge clk) r <= 6;
+		@(posedge clk) r <= 6;
+		@(posedge clk) r <= 6;
+		@(posedge clk) r <= 4;
+		@(posedge clk) r <= 4;
+		@(posedge clk) r <= 4;
+		@(posedge clk) r <= 0;
+		@(posedge clk) r <= 0;
+		@(posedge clk) r <= 4;
+		@(posedge clk) r <= 6;
+		@(posedge clk) r <= 7;
+		@(posedge clk) r <= 7;
+		@(posedge clk) r <= 7;
+		@(negedge clk);
+		wavedrom_stop();
+		
+		@(posedge clk);
+		reset <= 0;
+		@(posedge clk);
+		@(posedge clk);
+		
+		repeat(500) @(negedge clk) begin
+			reset <= ($random & 63) == 0;
+			r <= $random;
+		end
+		
+		#1 $finish;
+	end
+	
+endmodule
+
+module tb();
+
+	typedef struct packed {
+		int errors;
+		int errortime;
+		int errors_g;
+		int errortime_g;
+
+		int clocks;
+	} stats;
+	
+	stats stats1;
+	
+	
+	wire[511:0] wavedrom_title;
+	wire wavedrom_enable;
+	int wavedrom_hide_after_time;
+	
+	reg clk=0;
+	initial forever
+		#5 clk = ~clk;
+
+	logic resetn;
+	logic [3:1] r;
+	logic [3:1] g_ref;
+	logic [3:1] g_dut;
+
+	initial begin 
+		$dumpfile("wave.vcd");
+		$dumpvars(1, stim1.clk, tb_mismatch ,clk,resetn,r,g_ref,g_dut );
+	end
+
+
+	wire tb_match;		// Verification
+	wire tb_mismatch = ~tb_match;
+	
+	stimulus_gen stim1 (
+		.clk,
+		.* ,
+		.resetn,
+		.r );
+	reference_module good1 (
+		.clk,
+		.resetn,
+		.r,
+		.g(g_ref) );
+		
+	top_module top_module1 (
+		.clk,
+		.resetn,
+		.r,
+		.g(g_dut) );
+
+	
+	bit strobe = 0;
+	task wait_for_end_of_timestep;
+		repeat(5) begin
+			strobe <= !strobe;  // Try to delay until the very end of the time step.
+			@(strobe);
+		end
+	endtask	
+
+	
+	final begin
+		if (stats1.errors_g) $display("Hint: Output '%s' has %0d mismatches. First mismatch occurred at time %0d.", "g", stats1.errors_g, stats1.errortime_g);
+		else $display("Hint: Output '%s' has no mismatches.", "g");
+
+		$display("Hint: Total mismatched samples is %1d out of %1d samples\n", stats1.errors, stats1.clocks);
+		$display("Simulation finished at %0d ps", $time);
+		$display("Mismatches: %1d in %1d samples", stats1.errors, stats1.clocks);
+	end
+	
+	// Verification: XORs on the right makes any X in good_vector match anything, but X in dut_vector will only match X.
+	assign tb_match = ( { g_ref } === ( { g_ref } ^ { g_dut } ^ { g_ref } ) );
+	// Use explicit sensitivity list here. @(*) causes NetProc::nex_input() to be called when trying to compute
+	// the sensitivity list of the @(strobe) process, which isn't implemented.
+	always @(posedge clk, negedge clk) begin
+
+		stats1.clocks++;
+		if (!tb_match) begin
+			if (stats1.errors == 0) stats1.errortime = $time;
+			stats1.errors++;
+		end
+		if (g_ref !== ( g_ref ^ g_dut ^ g_ref ))
+		begin if (stats1.errors_g == 0) stats1.errortime_g = $time;
+			stats1.errors_g = stats1.errors_g+1'b1; end
+
+	end
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\Archive\7420&arbiter\arbiter_example\config.json">
+{
+	"general": {
+        "prompt": "./2013_q2afsm.sv",
+        "name": "top_module",
+        "testbench": "./2013_q2afsm_tb.sv",
+		"model_family": "ChatGPT",
+		"model_id": "gpt-4o-mini",
+		"num_candidates": 5,
+		"iterations": 5,
+        "outdir": "outputs_arbiter",
+        "log": "log.txt",
+		"ensemble": false
+    }
+}
+
+</file>
+
+<file path="HW2_AutoChip\Archive\7420&arbiter\arbiter_example\outputs_arbiter\iter0\response0\top_module.sv">
+module top_module (
+    input clk,
+    input resetn,
+    input [3:1] r,
+    output reg [3:1] g
+);
+
+    typedef enum logic [1:0] {
+        A = 2'b00,
+        B = 2'b01,
+        C = 2'b10
+    } state_t;
+
+    state_t current_state, next_state;
+
+    // State flip-flops
+    always_ff @(posedge clk or negedge resetn) begin
+        if (!resetn)
+            current_state <= A; // Reset to state A
+        else
+            current_state <= next_state;
+    end
+
+    // State table
+    always_comb begin
+        case (current_state)
+            A: begin
+                if (r[1]) next_state = B; // Device 1 requests
+                else if (r[2]) next_state = C; // Device 2 requests
+                else if (r[3]) next_state = D; // Device 3 requests
+                else next_state = A; // Stay in state A
+            end
+
+            B: begin
+                if (r[1]) next_state = B; // Device 1 still has grant
+                else next_state = A; // Device 1 stops requesting
+            end
+
+            C: begin
+                if (r[2]) next_state = C; // Device 2 still has grant
+                else next_state = A; // Device 2 stops requesting
+            end
+
+            default: next_state = A; // Default to state A
+        endcase
+    end
+
+    // FSM outputs
+    always_comb begin
+        g = 3'b000; // Default all grants to 0
+        case (current_state)
+            B: g[1] = 1; // Grant for device 1
+            C: g[2] = 1; // Grant for device 2
+            default: g[3] = 0; // Device 3 has lower priority, do not grant unless in specific conditions
+        endcase
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\config.json">
+{
+  "general": {
+    "prompt": "prompt.txt",
+    "name": "binary_to_bcd_converter",
+    "testbench": "testbench.v",
+    "outdir": "outputs_bcd",
+    "log": "log.txt",
+    "model_family": "ChatGPT",
+    "model_id": "gpt-4o-mini",
+    "iterations": 10,
+    "num_candidates": 5
+  }
+}
+</file>
+
+<file path="HW2_AutoChip\bcd_example\testbench.v">
+module tb;
+    reg [4:0] binary_input;
+    wire [7:0] bcd_output;
+    integer i, errors;
+    reg [3:0] temp_tens;
+    reg [3:0] temp_ones;
+    reg [7:0] expected_bcd;
+
+    binary_to_bcd_converter uut (
+        .binary_input(binary_input),
+        .bcd_output(bcd_output)
+    );
+
+    initial begin
+        errors = 0;
+        for (i = 0; i < 32; i = i + 1) begin
+            binary_input = i;
+            #10;
+            temp_tens = i / 10;
+            temp_ones = i % 10;
+            expected_bcd = {temp_tens, temp_ones};
+            
+            if (bcd_output !== expected_bcd) begin
+                // 这行极其重要：让 LLM 看到它到底算错了什么
+                $display("Error: input %d, expected %h, got %h", i, expected_bcd, bcd_output);
+                errors = errors + 1;
+            end
+        end
+        $display("Mismatches: %d in 32 samples", errors);
+    end
+endmodule
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter0\response0\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    always @(*) begin
+        integer temp;
+        integer tens, ones;
+        
+        // Cast binary_input to integer for arithmetic operations
+        temp = binary_input;
+
+        // Calculate tens and ones using simple division and modulo operations
+        tens = temp / 10;  // Get the tens digit
+        ones = temp % 10;  // Get the ones digit
+
+        // Assign the BCD output: upper 4 bits for tens, lower 4 bits for ones
+        bcd_output = {tens[3:0], ones[3:0]};
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter0\response1\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter(
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    always @(*) begin
+        integer decimal_value;
+        decimal_value = binary_input; // Convert to decimal
+        
+        // Calculate BCD digits
+        bcd_output[3:0] = decimal_value % 10;           // Ones digit
+        bcd_output[7:4] = decimal_value / 10;           // Tens digit
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter0\response2\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    always @(*) begin
+        integer tens, ones;
+        tens = binary_input / 10;
+        ones = binary_input % 10;
+        bcd_output = {tens[3:0], ones[3:0]}; // Concatenate tens and ones
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter0\response3\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter(
+    input  [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+    
+    always @(*) begin
+        case (binary_input)
+            5'd0:  bcd_output = 8'h00;
+            5'd1:  bcd_output = 8'h01;
+            5'd2:  bcd_output = 8'h02;
+            5'd3:  bcd_output = 8'h03;
+            5'd4:  bcd_output = 8'h04;
+            5'd5:  bcd_output = 8'h05;
+            5'd6:  bcd_output = 8'h06;
+            5'd7:  bcd_output = 8'h07;
+            5'd8:  bcd_output = 8'h08;
+            5'd9:  bcd_output = 8'h09;
+            5'd10: bcd_output = 8'h0A;
+            5'd11: bcd_output = 8'h0B;
+            5'd12: bcd_output = 8'h0C;
+            5'd13: bcd_output = 8'h0D;
+            5'd14: bcd_output = 8'h0E;
+            5'd15: bcd_output = 8'h0F;
+            5'd16: bcd_output = 8'h10;
+            5'd17: bcd_output = 8'h11;
+            5'd18: bcd_output = 8'h12;
+            5'd19: bcd_output = 8'h13;
+            5'd20: bcd_output = 8'h14;
+            5'd21: bcd_output = 8'h15;
+            5'd22: bcd_output = 8'h16;
+            5'd23: bcd_output = 8'h17;
+            5'd24: bcd_output = 8'h18;
+            5'd25: bcd_output = 8'h19;
+            5'd26: bcd_output = 8'h1A;
+            5'd27: bcd_output = 8'h1B;
+            5'd28: bcd_output = 8'h1C;
+            5'd29: bcd_output = 8'h1D;
+            5'd30: bcd_output = 8'h1E;
+            5'd31: bcd_output = 8'h1F;
+            default: bcd_output = 8'h00;
+        endcase
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter0\response4\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input  [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+    
+    always @* begin
+        // Initialize the BCD output to zero
+        bcd_output = 8'b00000000;
+
+        // Convert binary input to BCD
+        case (binary_input)
+            5'd0:  bcd_output = 8'h00;
+            5'd1:  bcd_output = 8'h01;
+            5'd2:  bcd_output = 8'h02;
+            5'd3:  bcd_output = 8'h03;
+            5'd4:  bcd_output = 8'h04;
+            5'd5:  bcd_output = 8'h05;
+            5'd6:  bcd_output = 8'h06;
+            5'd7:  bcd_output = 8'h07;
+            5'd8:  bcd_output = 8'h08;
+            5'd9:  bcd_output = 8'h09;
+            5'd10: bcd_output = 8'h0A;
+            5'd11: bcd_output = 8'h0B;
+            5'd12: bcd_output = 8'h0C;
+            5'd13: bcd_output = 8'h0D;
+            5'd14: bcd_output = 8'h0E;
+            5'd15: bcd_output = 8'h0F;
+            5'd16: bcd_output = 8'h10;
+            5'd17: bcd_output = 8'h11;
+            5'd18: bcd_output = 8'h12;
+            5'd19: bcd_output = 8'h13;
+            5'd20: bcd_output = 8'h14;
+            5'd21: bcd_output = 8'h15;
+            5'd22: bcd_output = 8'h16;
+            5'd23: bcd_output = 8'h17;
+            5'd24: bcd_output = 8'h18;
+            5'd25: bcd_output = 8'h19;
+            5'd26: bcd_output = 8'h1A;
+            5'd27: bcd_output = 8'h1B;
+            5'd28: bcd_output = 8'h1C;
+            5'd29: bcd_output = 8'h1D;
+            5'd30: bcd_output = 8'h1E;
+            5'd31: bcd_output = 8'h1F;
+            default: bcd_output = 8'h00; // In case of invalid input
+        endcase
+    end
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter1\response0\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+            
+            // Add 3 to any BCD digit greater than 4
+            if (bcd_temp[3:0] > 4)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        // Properly assign the final BCD output
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter1\response1\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+            
+            // Add 3 to any BCD digit greater than 4, correcting the logic
+            if (bcd_temp[3:0] > 4)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        // Assign the corrected BCD value to output
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter1\response2\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+            
+            // Add 3 to any BCD digit greater than 4 (adjusted condition)
+            if (bcd_temp[3:0] >= 5)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] >= 5)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter1\response3\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], 1'b0};
+            
+            // Add the current binary input bit
+            bcd_temp[0] = binary_input[4-i];
+
+            // Add 3 to any BCD digit greater than 4
+            if (bcd_temp[3:0] > 4)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter1\response4\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+            
+            // Add 3 to any BCD digit greater than 4 (tens and ones)
+            if (bcd_temp[3:0] > 4)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter10\response0\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;
+            if (bcd_temp[7:4] > 4'd9)
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;
+        end
+
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter10\response1\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;
+            if (bcd_temp[7:4] > 4'd9)
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;
+        end
+
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter10\response2\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;
+            if (bcd_temp[7:4] > 4'd9)
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;
+        end
+
+        //  Convert computed BCD temporary to output
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter10\response3\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;
+            if (bcd_temp[7:4] > 4'd9)
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;
+        end
+
+        // Set the BCD output
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter10\response4\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;
+            if (bcd_temp[7:4] > 4'd9)
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;
+        end
+
+        bcd_output = bcd_temp; // Correct assignment to output after shifting
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter2\response0\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+            
+            // Add 3 to any BCD digit greater than 4 (tens and ones)
+            if (bcd_temp[3:0] > 4)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter2\response1\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+            
+            // Add 3 to any BCD digit greater than 4 (tens and ones)
+            if (bcd_temp[3:0] > 4)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter2\response2\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+            
+            // Add 3 to any BCD digit greater than 4 (tens and ones)
+            if (bcd_temp[3:0] > 4)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        // Ensure we are not exceeding the valid BCD range
+        if (binary_input >= 5'd30) begin
+            bcd_output = 8'b0; // Reset to zero or unrecognized input handling
+        end else begin
+            bcd_output = bcd_temp;
+        end
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter2\response3\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+            
+            // Add 3 to any BCD digit greater than 4 (tens and ones)
+            if (bcd_temp[3:0] > 4)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        // Assign the final BCD output
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter2\response4\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], 1'b0};
+
+            // Set the least significant bit from binary_input
+            bcd_temp[0] = binary_input[4-i];
+
+            // Add 3 to any BCD digit greater than 4 (tens and ones)
+            if (bcd_temp[3:0] > 4)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter3\response0\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+            
+            // Add 3 to any BCD digit greater than 4 (tens and ones)
+            if (bcd_temp[3:0] > 4)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        // Output the correct BCD format
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter3\response1\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+            
+            // Add 3 to any BCD digit greater than 4 (tens and ones)
+            if (bcd_temp[3:0] > 4)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        // Assign the corrected BCD output
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter3\response2\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], 1'b0}; // Shift left the bcd_temp
+            bcd_temp[0] = binary_input[4-i]; // Insert the new bit
+            
+            // Add 3 to any BCD digit greater than 4 (tens and ones)
+            if (bcd_temp[3:0] > 4)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter3\response3\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter3\response4\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+            
+            // Add 3 to any BCD digit that is 5 or greater
+            if (bcd_temp[3:0] >= 5)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] >= 5)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter4\response0\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+            
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9)  // Check if ones digit exceeds 9
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;
+            if (bcd_temp[7:4] > 4'd9)  // Check if tens digit exceeds 9
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter4\response1\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [8:0] bcd_temp; // Changed to 9 bits to accommodate carry
+
+    always @(binary_input) begin
+        bcd_temp = 9'b0;  // Initialize BCD temporary storage
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[7:0], binary_input[4-i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9)
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;  // Add 6 for adjustment
+            if (bcd_temp[7:4] > 4'd9)
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;  // Add 6 for adjustment
+        end
+        
+        bcd_output = bcd_temp[7:0]; // Assign BCD output from the lower 8 bits
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter4\response2\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'b0100) // Change from > 4 to > 4'b0100
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'b0011; // Change from + 3 to + 4'b0011
+            if (bcd_temp[7:4] > 4'b0100) // Change from > 4 to > 4'b0100
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'b0011; // Change from + 3 to + 4'b0011
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter4\response3\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'h9)
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'h3;
+            if (bcd_temp[7:4] > 4'h9)
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'h3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter4\response4\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] >= 5) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] >= 5) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter5\response0\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] >= 5) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] >= 5) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter5\response1\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd4) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] > 4'd4) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter5\response2\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd4) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd3;
+            if (bcd_temp[7:4] > 4'd4) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter5\response3\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] >= 5) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] >= 5) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+    // Ensure the BCD output is valid for inputs 0 to 31
+    always @(binary_input) begin
+        if (binary_input > 25) begin
+            bcd_output = 8'hFF; // Invalid input case
+        end
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter5\response4\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+
+    always @(binary_input) begin
+        reg [7:0] bcd_temp; 
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 0; i < 5; i = i + 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[4-i]};
+
+            // Adjust BCD digits if needed for ones and tens
+            if (bcd_temp[3:0] > 4'b0100) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'b0011; // add 3 to ones place if greater than 4
+            if (bcd_temp[7:4] > 4'b0100) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'b0011; // add 3 to tens place if greater than 4
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter6\response0\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] >= 5)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] >= 5)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter6\response1\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] >= 10) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 6;
+            if (bcd_temp[7:4] >= 10) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 6;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter6\response2\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6; // Correcting excess for ones
+            if (bcd_temp[7:4] > 4'd9) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6; // Correcting excess for tens
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter6\response3\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] >= 5) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] >= 5) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter6\response4\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] >= 5) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] >= 5) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter7\response0\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'b0100) // changed from >= to >
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'b0011; // 3 in BCD is 0011
+            if (bcd_temp[7:4] > 4'b0100) // changed from >= to >
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'b0011; // 3 in BCD is 0011
+        end
+
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter7\response1\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd4) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd3;
+            if (bcd_temp[7:4] > 4'd4) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd3;
+        end
+
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter7\response2\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'b0100) // Adjust upper digit if it exceeds 4
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'b0011;
+            if (bcd_temp[7:4] > 4'b0100) // Adjust lower digit if it exceeds 4
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'b0011;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter7\response3\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] >= 5)
+                bcd_temp[3:0] = bcd_temp[3:0] + 3;
+            if (bcd_temp[7:4] >= 5)
+                bcd_temp[7:4] = bcd_temp[7:4] + 3;
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter7\response4\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+        
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'b0100)
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'b0011; // Add 3
+            if (bcd_temp[7:4] > 4'b0100)
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'b0011; // Add 3
+        end
+        
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter8\response0\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;  // Change from 4'd3 to 4'd6
+            if (bcd_temp[7:4] > 4'd9) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;  // Change from 4'd3 to 4'd6
+        end
+
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter8\response1\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6; // Add 6 for BCD correction
+            if (bcd_temp[7:4] > 4'd9) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6; // Add 6 for BCD correction
+        end
+
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter8\response2\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;
+            if (bcd_temp[7:4] > 4'd9) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;
+        end
+
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter8\response3\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed (adding 3 to digits greater than 4)
+            if (bcd_temp[3:0] > 4'd9)
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;  // Fixing adjustment from +3 to +6
+            if (bcd_temp[7:4] > 4'd9)
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;  // Fixing adjustment from +3 to +6
+        end
+
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter8\response4\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp; 
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if any digit is greater than 4
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;
+            if (bcd_temp[7:4] > 4'd9) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;
+        end
+
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter9\response0\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;
+            if (bcd_temp[7:4] > 4'd9)
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;
+        end
+
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter9\response1\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;
+            if (bcd_temp[7:4] > 4'd9) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;
+        end
+
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter9\response2\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;
+            if (bcd_temp[7:4] > 4'd9) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;
+        end
+
+        bcd_output = bcd_temp; // Assign the result to the output
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter9\response3\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;
+            if (bcd_temp[7:4] > 4'd9) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;
+        end
+
+        bcd_output = bcd_temp[7:0]; // Ensure full output assignment
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\bcd_example\outputs_bcd\iter9\response4\binary_to_bcd_converter.sv">
+module binary_to_bcd_converter (
+    input [4:0] binary_input,
+    output reg [7:0] bcd_output
+);
+
+    integer i;
+    reg [7:0] bcd_temp;
+
+    always @(binary_input) begin
+        bcd_temp = 8'b0;
+
+        // Binary to BCD conversion algorithm
+        for (i = 4; i >= 0; i = i - 1) begin
+            // Shift left by 1 to make space for the new bit
+            bcd_temp = {bcd_temp[6:0], binary_input[i]};
+
+            // Adjust BCD digits if needed
+            if (bcd_temp[3:0] > 4'd9) 
+                bcd_temp[3:0] = bcd_temp[3:0] + 4'd6;
+            if (bcd_temp[7:4] > 4'd9) 
+                bcd_temp[7:4] = bcd_temp[7:4] + 4'd6;
+        end
+
+        bcd_output = bcd_temp;
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\config.json">
+{
+  "general": {
+    "prompt": "prompt.txt",
+    "name": "sequence_detector",
+    "testbench": "sequence_detector_tb.v",
+    "outdir": "outputs_seq",
+    "log": "log.txt",
+    "model_family": "ChatGPT",
+    "model_id": "gpt-4o-mini",
+    "iterations": 10,
+    "num_candidates": 5
+  }
+}
+</file>
+
+<file path="HW2_AutoChip\seq_example\sequence_detector_tb.v">
+`timescale 1ns/1ps
+
+module tb(); // <-- 这里改成了 tb，必须和 AutoChip 底层硬编码匹配
+    reg clk;
+    reg reset_n;
+    reg [2:0] data;
+    wire sequence_found;
+    
+    integer errors; 
+
+    // Instantiate the sequence_detector module
+    sequence_detector dut (
+        .clk(clk),
+        .reset_n(reset_n),
+        .data(data),
+        .sequence_found(sequence_found)
+    );
+
+    // Clock generation
+    always begin
+        #5 clk = ~clk;
+    end
+
+    // Test stimulus task
+    task apply_stimulus;
+        input [2:0] data_value;
+        input integer delay_cycles;
+        begin
+            data <= data_value;
+            repeat (delay_cycles) @(posedge clk);
+        end
+    endtask
+
+    // Check output task
+    task check_output;
+        input integer cycle;
+        input expected_value;
+        begin
+            if (sequence_found !== expected_value) begin
+                $display("Error: Cycle %0d, Expected: %b, Got: %b", cycle, expected_value, sequence_found);
+                errors = errors + 1; 
+            end
+        end
+    endtask
+
+    // Testbench stimulus and checking
+    initial begin
+        // Initialize signals
+        errors = 0;
+        clk <= 0;
+        reset_n <= 0;
+        data <= 3'b000;
+
+        // Apply reset
+        @(posedge clk);
+        reset_n <= 1;
+
+        // Test case: Correct sequence
+        apply_stimulus(3'b001, 1); check_output(1, 1'b0);
+        apply_stimulus(3'b101, 1); check_output(2, 1'b0);
+        apply_stimulus(3'b110, 1); check_output(3, 1'b0);
+        apply_stimulus(3'b000, 1); check_output(4, 1'b0);
+        apply_stimulus(3'b110, 1); check_output(5, 1'b0);
+        apply_stimulus(3'b110, 1); check_output(6, 1'b0);
+        apply_stimulus(3'b011, 1); check_output(7, 1'b0);
+        apply_stimulus(3'b101, 1); check_output(8, 1'b1);
+
+        // Test case: Incorrect sequence
+        apply_stimulus(3'b001, 1); check_output(9, 1'b0);
+        apply_stimulus(3'b101, 1); check_output(10, 1'b0);
+        apply_stimulus(3'b010, 1); check_output(11, 1'b0);
+        apply_stimulus(3'b000, 1); check_output(12, 1'b0);
+
+        // 输出 AutoChip 需要的匹配结果格式
+        $display("Mismatches: %d in 12 samples", errors);
+        $finish;
+    end
+endmodule
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter0\response0\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+
+    typedef enum reg [3:0] { 
+        S0, S1, S2, S3, S4, S5, S6, S7, S8 
+    } state_t;
+
+    state_t current_state, next_state;
+
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n)
+            current_state <= S0;
+        else
+            current_state <= next_state;
+    end
+
+    always @(*) begin
+        // Default assignments
+        next_state = current_state;
+        sequence_found = 1'b0;
+
+        case (current_state)
+            S0: if (data == 3'b001) next_state = S1;
+            S1: if (data == 3'b101) next_state = S2;
+            S2: if (data == 3'b110) next_state = S3;
+            S3: if (data == 3'b000) next_state = S4;
+            S4: if (data == 3'b110) next_state = S5;
+            S5: if (data == 3'b110) next_state = S6;
+            S6: if (data == 3'b011) next_state = S7;
+            S7: if (data == 3'b101) begin
+                    next_state = S8;
+                    sequence_found = 1'b1; // Mealy output
+                end
+            S8: begin
+                    next_state = S0; // Return to start for the next detection
+                    sequence_found = 1'b0;
+                end
+            default: next_state = S0; // Safety default transition
+        endcase
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter0\response1\sequence_detector.sv">
+module sequence_detector(
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+
+    // State encoding
+    typedef enum reg [3:0] {
+        S0 = 4'b0000, // Initial state
+        S1 = 4'b0001, // 0 (step 1)
+        S2 = 4'b0010, // 0 (step 2)
+        S3 = 4'b0011, // 1 (step 3)
+        S4 = 4'b0100, // 1 (step 4)
+        S5 = 4'b0101, // 0 (step 5)
+        S6 = 4'b0110, // 1 (step 6)
+        S7 = 4'b0111, // 1 (step 7)
+        S8 = 4'b1000  // 0 (step 8) (Final state)
+    } state_t;
+
+    state_t current_state, next_state;
+
+    // State transition logic
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n) begin
+            current_state <= S0;
+        end else begin
+            current_state <= next_state;
+        end
+    end
+
+    // Next state and output logic
+    always @(*) begin
+        // Default assignment
+        next_state = current_state;
+        sequence_found = 1'b0; // Default output is low
+
+        case (current_state)
+            S0: begin
+                if (data == 3'b001)
+                    next_state = S1;
+            end
+            
+            S1: begin
+                if (data == 3'b001)
+                    next_state = S1; // Stay in S1 for 0
+                else if (data == 3'b101)
+                    next_state = S2; // Move to S2 for 1
+                else
+                    next_state = S0; // Go back to S0 for any other input
+            end
+
+            S2: begin
+                if (data == 3'b101)
+                    next_state = S3; // Move to S3 for 1
+                else
+                    next_state = S0; // Go back to S0 otherwise
+            end
+
+            S3: begin
+                if (data == 3'b110)
+                    next_state = S4; // Move to S4 for 1
+                else
+                    next_state = S0; // Go back to S0 otherwise
+            end
+
+            S4: begin
+                if (data == 3'b000)
+                    next_state = S5; // Move to S5 for 0
+                else
+                    next_state = S0; // Go back to S0 otherwise
+            end
+
+            S5: begin
+                if (data == 3'b110)
+                    next_state = S6; // Move to S6 for 1
+                else
+                    next_state = S0; // Go back to S0 otherwise
+            end
+
+            S6: begin
+                if (data == 3'b110)
+                    next_state = S7; // Move to S7 for 1
+                else
+                    next_state = S0; // Go back to S0 otherwise
+            end
+
+            S7: begin
+                if (data == 3'b011)
+                    next_state = S8; // Move to S8 for 0
+                else
+                    next_state = S0; // Go back to S0 otherwise
+            end
+
+            S8: begin
+                if (data == 3'b101) begin
+                    sequence_found = 1'b1; // Sequence found in the same cycle
+                    next_state = S1; // Return to S1 for further detections
+                end else begin
+                    next_state = S0; // Go back to S0 otherwise
+                end
+            end
+
+            default: next_state = S0; // Default case to handle unexpected states
+        endcase
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter0\response2\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+    
+    // State Encoding
+    parameter S0 = 3'b000,  // Initial state
+              S1 = 3'b001,  // First value of the sequence
+              S2 = 3'b010,  // Second value of the sequence
+              S3 = 3'b011,  // Third value of the sequence
+              S4 = 3'b100,  // Fourth value of the sequence
+              S5 = 3'b101,  // Fifth value of the sequence
+              S6 = 3'b110,  // Sixth value of the sequence
+              S7 = 3'b111;  // Seventh value of the sequence
+  
+    reg [2:0] state, next_state;
+
+    // State Transition Logic
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n)
+            state <= S0; // Reset to initial state
+        else
+            state <= next_state; // Update state on clock edge
+    end
+
+    // Next State Logic and Mealy Output
+    always @(*) begin
+        // Default values
+        next_state = state; // Stay in the same state
+        sequence_found = 1'b0; // Default output to low
+
+        case (state)
+            S0: if (data == 3'b001) next_state = S1; // Transition to S1
+            S1: if (data == 3'b101) next_state = S2; // Transition to S2
+            S2: if (data == 3'b110) next_state = S3; // Transition to S3
+            S3: if (data == 3'b000) next_state = S4; // Transition to S4
+            S4: if (data == 3'b110) next_state = S5; // Transition to S5
+            S5: if (data == 3'b110) next_state = S6; // Transition to S6
+            S6: if (data == 3'b011) next_state = S7; // Transition to S7
+            S7: begin
+                    if (data == 3'b101) begin
+                        sequence_found = 1'b1; // Mealy output goes high
+                        next_state = S1; // Can start a new sequence at S1
+                    end
+                end
+            default: next_state = S0; // Fallback to initial state
+        endcase
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter0\response3\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+
+    // State encoding
+    typedef enum reg [3:0] {
+        S0 = 4'b0000,
+        S1 = 4'b0001,
+        S2 = 4'b0010,
+        S3 = 4'b0011,
+        S4 = 4'b0100,
+        S5 = 4'b0101,
+        S6 = 4'b0110,
+        S7 = 4'b0111,
+        S8 = 4'b1000  // Final state after receiving last sequence
+    } state_t;
+
+    state_t current_state, next_state;
+
+    // State transition
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n)
+            current_state <= S0;
+        else
+            current_state <= next_state;
+    end
+
+    // Next state logic and Mealy output
+    always @(*) begin
+        sequence_found = 1'b0;  // Default output
+        case (current_state)
+            S0: begin
+                if (data == 3'b001)
+                    next_state = S1;
+                else
+                    next_state = S0;
+            end
+            S1: begin
+                if (data == 3'b101)
+                    next_state = S2;
+                else
+                    next_state = S0;
+            end
+            S2: begin
+                if (data == 3'b110)
+                    next_state = S3;
+                else
+                    next_state = S0;
+            end
+            S3: begin
+                if (data == 3'b000)
+                    next_state = S4;
+                else
+                    next_state = S0;
+            end
+            S4: begin
+                if (data == 3'b110)
+                    next_state = S5;
+                else
+                    next_state = S0;
+            end
+            S5: begin
+                if (data == 3'b110)
+                    next_state = S6;
+                else
+                    next_state = S0;
+            end
+            S6: begin
+                if (data == 3'b011)
+                    next_state = S7;
+                else
+                    next_state = S0;
+            end
+            S7: begin
+                if (data == 3'b101) begin
+                    sequence_found = 1'b1; // Mealy output
+                    next_state = S8; // Transition to S8
+                end
+                else
+                    next_state = S0;
+            end
+            default: begin
+                next_state = S0;
+            end
+        endcase
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter0\response4\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+
+    // State encoding
+    typedef enum reg [2:0] {
+        S0 = 3'b000,
+        S1 = 3'b001,
+        S2 = 3'b010,
+        S3 = 3'b011,
+        S4 = 3'b100,
+        S5 = 3'b101,
+        S6 = 3'b110,
+        S7 = 3'b111
+    } state_t;
+
+    state_t current_state, next_state;
+
+    // State transition logic
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n) begin
+            current_state <= S0;
+        end else begin
+            current_state <= next_state;
+        end
+    end
+
+    // Next-state logic and Mealy output generation
+    always @(*) begin
+        sequence_found = 1'b0; // Default value
+        case (current_state)
+            S0: begin
+                if (data == 3'b001) begin
+                    next_state = S1;
+                end else begin
+                    next_state = S0;
+                end
+            end
+            S1: begin
+                if (data == 3'b101) begin
+                    sequence_found = 1'b1; // Found sequence at state S1
+                    next_state = S2;
+                end else begin
+                    next_state = S0; // Reset to initial state
+                end
+            end
+            S2: begin
+                if (data == 3'b110) begin
+                    next_state = S3;
+                end else begin
+                    next_state = S0; // Reset to initial state
+                end
+            end
+            S3: begin
+                if (data == 3'b000) begin
+                    next_state = S4;
+                end else begin
+                    next_state = S0; // Reset to initial state
+                end
+            end
+            S4: begin
+                if (data == 3'b110) begin
+                    next_state = S5;
+                end else begin
+                    next_state = S0; // Reset to initial state
+                end
+            end
+            S5: begin
+                if (data == 3'b110) begin
+                    next_state = S6;
+                end else begin
+                    next_state = S0; // Reset to initial state
+                end
+            end
+            S6: begin
+                if (data == 3'b011) begin
+                    next_state = S7;
+                end else begin
+                    next_state = S0; // Reset to initial state
+                end
+            end
+            S7: begin
+                if (data == 3'b101) begin
+                    sequence_found = 1'b1; // Found sequence at state S7
+                    next_state = S0; // Reset to initial state or any next state if continuous detection is needed
+                end else begin
+                    next_state = S0; // Reset to initial state
+                end
+            end
+            default: begin
+                next_state = S0; // Default/reset state
+            end
+        endcase
+    end
+
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter1\response0\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+    typedef enum logic [3:0] {
+        S0, // Initial state
+        S1, // 0
+        S2, // 1
+        S3, // 1
+        S4, // 0
+        S5, // 1
+        S6, // 1
+        S7, // 0
+        S8  // 1
+    } state_t;
+
+    state_t current_state, next_state;
+
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n)
+            current_state <= S0;
+        else
+            current_state <= next_state;
+    end
+
+    always @(*) begin
+        // Default values
+        next_state = current_state;
+        sequence_found = 1'b0;
+
+        case (current_state) 
+            S0: 
+                if (data == 3'b000) next_state = S1;
+            S1: 
+                if (data == 3'b010) next_state = S2; // transition to S1 to see the next '1'
+                else if (data == 3'b000) next_state = S1; // stay in S1
+            S2: 
+                if (data == 3'b101) next_state = S3; // detecting 1
+            S3: 
+                if (data == 3'b110) next_state = S4; // detecting 1
+            S4: 
+                if (data == 3'b000) next_state = S5; // back to 0
+            S5: 
+                if (data == 3'b110) next_state = S6; // detecting 1
+            S6: 
+                if (data == 3'b011) next_state = S7; // detecting 0
+            S7: 
+                if (data == 3'b101) begin
+                    next_state = S8; 
+                    sequence_found = 1'b1; // MEALY output on condition
+                end
+            S8: begin
+                next_state = S8; // Stay in last state
+                sequence_found = 1'b1; // Output only during this state
+            end
+            default: 
+                next_state = S0;
+        endcase
+    end
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter1\response1\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+    typedef enum logic [3:0] {
+        S0, // Initial state
+        S1, // 0
+        S2, // 1
+        S3, // 1
+        S4, // 0
+        S5, // 1
+        S6, // 1
+        S7, // 0
+        S8  // 1
+    } state_t;
+
+    state_t current_state, next_state;
+
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n)
+            current_state <= S0;
+        else
+            current_state <= next_state;
+    end
+
+    always @(*) begin
+        // Default values
+        next_state = current_state;
+        sequence_found = 1'b0;
+
+        case (current_state) 
+            S0: 
+                if (data == 3'b000) next_state = S1;
+            S1: 
+                if (data == 3'b010) next_state = S2; // transition to S2 to see the next '1'
+            S2: 
+                if (data == 3'b101) next_state = S3; // detecting 1
+            S3: 
+                if (data == 3'b110) next_state = S4; // detecting 1
+            S4: 
+                if (data == 3'b000) next_state = S5; // back to 0
+            S5: 
+                if (data == 3'b110) next_state = S6; // detecting 1
+            S6: 
+                if (data == 3'b011) next_state = S7; // detecting 0
+            S7: 
+                if (data == 3'b101) begin
+                    next_state = S8; 
+                    sequence_found = 1'b1; // MEALY output on condition
+                end
+            S8: begin
+                next_state = S8; // Stay in last state
+                sequence_found = 1'b1; // Output only during this state
+            end
+            default: 
+                next_state = S0;
+        endcase
+    end
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter1\response2\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+    typedef enum logic [3:0] {
+        S0, // Initial state
+        S1, // 0
+        S2, // 1
+        S3, // 1
+        S4, // 0
+        S5, // 1
+        S6, // 1
+        S7, // 0
+        S8  // 1
+    } state_t;
+
+    state_t current_state, next_state;
+
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n)
+            current_state <= S0;
+        else
+            current_state <= next_state;
+    end
+
+    always @(*) begin
+        // Default values
+        next_state = current_state;
+        sequence_found = 1'b0;
+
+        case (current_state) 
+            S0: 
+                if (data == 3'b000) next_state = S1;
+            S1: 
+                if (data == 3'b010) next_state = S2; // transition to S1 to see the next '1'
+                else if (data == 3'b000) next_state = S1; // stay in S1
+            S2: 
+                if (data == 3'b101) next_state = S3; // detecting 1
+            S3: 
+                if (data == 3'b110) next_state = S4; // detecting 1
+            S4: 
+                if (data == 3'b000) next_state = S5; // back to 0
+            S5: 
+                if (data == 3'b110) next_state = S6; // detecting 1
+            S6: 
+                if (data == 3'b011) next_state = S7; // detecting 0
+            S7: 
+                if (data == 3'b101) begin
+                    next_state = S8; 
+                    sequence_found = 1'b1; // MEALY output on condition
+                end
+            S8: begin
+                next_state = S8; // Stay in last state
+                sequence_found = 1'b1; // Output only during this state
+            end
+            default: 
+                next_state = S0;
+        endcase
+    end
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter1\response3\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+    typedef enum logic [3:0] {
+        S0, // Initial state
+        S1, // 0
+        S2, // 1
+        S3, // 1
+        S4, // 0
+        S5, // 1
+        S6, // 1
+        S7, // 0
+        S8  // 1
+    } state_t;
+
+    state_t current_state, next_state;
+
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n)
+            current_state <= S0;
+        else
+            current_state <= next_state;
+    end
+
+    always @(*) begin
+        // Default values
+        next_state = current_state;
+        sequence_found = 1'b0;
+
+        case (current_state) 
+            S0: 
+                if (data == 3'b000) next_state = S1;
+            S1: 
+                if (data == 3'b010) next_state = S2; // transition to S1 to see the next '1'
+                else if (data == 3'b000) next_state = S1; // stay in S1
+            S2: 
+                if (data == 3'b101) next_state = S3; // detecting 1
+            S3: 
+                if (data == 3'b110) next_state = S4; // detecting 1
+            S4: 
+                if (data == 3'b000) next_state = S5; // back to 0
+            S5: 
+                if (data == 3'b110) next_state = S6; // detecting 1
+            S6: 
+                if (data == 3'b011) next_state = S7; // detecting 0
+            S7: 
+                if (data == 3'b101) begin
+                    next_state = S8; 
+                    sequence_found = 1'b1; // MEALY output on condition
+                end
+            S8: begin
+                next_state = S8; // Stay in last state
+                sequence_found = 1'b1; // Output only during this state
+            end
+            default: 
+                next_state = S0;
+        endcase
+    end
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter1\response4\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+    typedef enum logic [3:0] {
+        S0, // Initial state
+        S1, // 0
+        S2, // 1
+        S3, // 1
+        S4, // 0
+        S5, // 1
+        S6, // 1
+        S7, // 0
+        S8  // 1
+    } state_t;
+
+    state_t current_state, next_state;
+
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n)
+            current_state <= S0;
+        else
+            current_state <= next_state;
+    end
+
+    always @(*) begin
+        // Default values
+        next_state = current_state;
+        sequence_found = 1'b0;
+
+        case (current_state) 
+            S0: 
+                if (data == 3'b000) next_state = S1;
+            S1: 
+                if (data == 3'b010) next_state = S2; // transition to S1 to see the next '1'
+                else if (data == 3'b000) next_state = S1; // stay in S1
+            S2: 
+                if (data == 3'b101) next_state = S3; // detecting 1
+            S3: 
+                if (data == 3'b110) next_state = S4; // detecting 1
+            S4: 
+                if (data == 3'b000) next_state = S5; // back to 0
+            S5: 
+                if (data == 3'b110) next_state = S6; // detecting 1
+            S6: 
+                if (data == 3'b011) next_state = S7; // detecting 0
+            S7: 
+                if (data == 3'b101) begin
+                    next_state = S8; 
+                    sequence_found = 1'b1; // MEALY output on condition
+                end
+            S8: begin
+                next_state = S8; // Stay in last state
+                sequence_found = 1'b1; // Output only during this state
+            end
+            default: 
+                next_state = S0;
+        endcase
+    end
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter2\response0\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+    typedef enum logic [3:0] {
+        S0, // Initial state
+        S1, // 0
+        S2, // 1
+        S3, // 1
+        S4, // 0
+        S5, // 1
+        S6, // 1
+        S7, // 0
+        S8  // 1
+    } state_t;
+
+    state_t current_state, next_state;
+
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n)
+            current_state <= S0;
+        else
+            current_state <= next_state;
+    end
+
+    always @(*) begin
+        // Default values
+        next_state = current_state;
+        sequence_found = 1'b0;
+
+        case (current_state) 
+            S0: 
+                if (data == 3'b000) next_state = S1;
+            S1: 
+                if (data == 3'b010) next_state = S2; // transition to S2 to see the next '1'
+            S2: 
+                if (data == 3'b101) next_state = S3; // detecting 1
+            S3: 
+                if (data == 3'b110) next_state = S4; // detecting 1
+            S4: 
+                if (data == 3'b000) next_state = S5; // back to 0
+            S5: 
+                if (data == 3'b110) next_state = S6; // detecting 1
+            S6: 
+                if (data == 3'b011) next_state = S7; // detecting 0
+            S7: 
+                if (data == 3'b101) begin
+                    next_state = S8; 
+                    sequence_found = 1'b1; // MEALY output on condition
+                end
+            S8: begin
+                next_state = S8; // Stay in last state
+                sequence_found = 1'b1; // Output only during this state
+            end
+            default: 
+                next_state = S0;
+        endcase
+    end
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter2\response1\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+    typedef enum logic [3:0] {
+        S0, // Initial state
+        S1, // 0
+        S2, // 1
+        S3, // 1
+        S4, // 0
+        S5, // 1
+        S6, // 1
+        S7, // 0
+        S8  // 1
+    } state_t;
+
+    state_t current_state, next_state;
+
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n)
+            current_state <= S0;
+        else
+            current_state <= next_state;
+    end
+
+    always @(*) begin
+        // Default values
+        next_state = current_state;
+        sequence_found = 1'b0;
+
+        case (current_state) 
+            S0: 
+                if (data == 3'b000) next_state = S1;
+            S1: 
+                if (data == 3'b010) next_state = S2; // transition to S2 to see the next '1'
+            S2: 
+                if (data == 3'b101) next_state = S3; // detecting 1
+            S3: 
+                if (data == 3'b110) next_state = S4; // detecting 1
+            S4: 
+                if (data == 3'b000) next_state = S5; // back to 0
+            S5: 
+                if (data == 3'b110) next_state = S6; // detecting 1
+            S6: 
+                if (data == 3'b011) next_state = S7; // detecting 0
+            S7: 
+                if (data == 3'b101) begin
+                    next_state = S8; 
+                    sequence_found = 1'b1; // MEALY output on condition
+                end
+            S8: begin
+                next_state = S8; // Stay in last state
+                sequence_found = 1'b1; // Output only during this state
+            end
+            default: 
+                next_state = S0;
+        endcase
+    end
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter2\response2\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+    typedef enum logic [3:0] {
+        S0, // Initial state
+        S1, // State after seeing 0
+        S2, // State after seeing 00
+        S3, // State after seeing 001
+        S4, // State after seeing 000
+        S5, // State after seeing 0000
+        S6, // State after seeing 0001
+        S7, // State after seeing 0011
+        S8  // State after seeing 0010
+    } state_t;
+
+    state_t current_state, next_state;
+
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n)
+            current_state <= S0;
+        else
+            current_state <= next_state;
+    end
+
+    always @(*) begin
+        // Default values
+        next_state = current_state;
+        sequence_found = 1'b0;
+
+        case (current_state) 
+            S0: 
+                if (data == 3'b000) next_state = S1;
+            S1: 
+                if (data == 3'b001) next_state = S2; // Detect '1' after '0'
+            S2: 
+                if (data == 3'b101) next_state = S3; // Detect '0'
+            S3: 
+                if (data == 3'b110) next_state = S4; // Detect '1'
+            S4: 
+                if (data == 3'b000) next_state = S5; // Detect '0'
+            S5: 
+                if (data == 3'b110) next_state = S6; // Detect '1'
+            S6: 
+                if (data == 3'b011) next_state = S7; // Detect '0'
+            S7: 
+                if (data == 3'b101) begin
+                    next_state = S0; 
+                    sequence_found = 1'b1; // MEALY output
+                end
+            default: 
+                next_state = S0;
+        endcase
+    end
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter2\response3\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+    typedef enum logic [3:0] {
+        S0, // Initial state
+        S1, // 0
+        S2, // 1
+        S3, // 1
+        S4, // 0
+        S5, // 1
+        S6, // 1
+        S7, // 0
+        S8  // 1
+    } state_t;
+
+    state_t current_state, next_state;
+
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n)
+            current_state <= S0;
+        else
+            current_state <= next_state;
+    end
+
+    always @(*) begin
+        // Default values
+        next_state = current_state;
+        sequence_found = 1'b0;
+
+        case (current_state) 
+            S0: 
+                if (data == 3'b000) next_state = S1;
+            S1: 
+                if (data == 3'b010) next_state = S2; // transition to S2 to see the next '1'
+            S2: 
+                if (data == 3'b101) next_state = S3; // detecting 1
+            S3: 
+                if (data == 3'b110) next_state = S4; // detecting 1
+            S4: 
+                if (data == 3'b000) next_state = S5; // back to 0
+            S5: 
+                if (data == 3'b110) next_state = S6; // detecting 1
+            S6: 
+                if (data == 3'b011) next_state = S7; // detecting 0
+            S7: 
+                if (data == 3'b101) begin
+                    next_state = S8; 
+                    sequence_found = 1'b1; // MEALY output on condition
+                end
+            S8: begin
+                next_state = S8; // Stay in last state
+                sequence_found = 1'b1; // Output only during this state
+            end
+            default: 
+                next_state = S0;
+        endcase
+    end
+endmodule
+
+</file>
+
+<file path="HW2_AutoChip\seq_example\outputs_seq\iter2\response4\sequence_detector.sv">
+module sequence_detector (
+    input wire clk,
+    input wire reset_n,
+    input wire [2:0] data,
+    output reg sequence_found
+);
+    typedef enum logic [3:0] {
+        S0, // Initial state
+        S1, // 0
+        S2, // 1
+        S3, // 1
+        S4, // 0
+        S5, // 1
+        S6, // 1
+        S7, // 0
+        S8  // 1
+    } state_t;
+
+    state_t current_state, next_state;
+
+    always @(posedge clk or negedge reset_n) begin
+        if (!reset_n)
+            current_state <= S0;
+        else
+            current_state <= next_state;
+    end
+
+    always @(*) begin
+        // Default values
+        next_state = current_state;
+        sequence_found = 1'b0;
+
+        case (current_state) 
+            S0: 
+                if (data == 3'b000) next_state = S1;
+            S1: 
+                if (data == 3'b010) next_state = S2; // transition to S2 to see the next '1'
+            S2: 
+                if (data == 3'b101) next_state = S3; // detecting 1
+            S3: 
+                if (data == 3'b110) next_state = S4; // detecting 1
+            S4: 
+                if (data == 3'b000) next_state = S5; // back to 0
+            S5: 
+                if (data == 3'b110) next_state = S6; // detecting 1
+            S6: 
+                if (data == 3'b011) next_state = S7; // detecting 0
+            S7: 
+                if (data == 3'b101) begin
+                    next_state = S8; 
+                    sequence_found = 1'b1; // MEALY output on condition
+                end
+            S8: begin
+                next_state = S8; // Stay in last state
+                sequence_found = 1'b1; // Output only during this state
+            end
+            default: 
+                next_state = S0;
+        endcase
+    end
+endmodule
+
+</file>
+
+<file path="HW3_ROMA\ROME_Report.md">
+# LLM4ChipDesign HW3 ROME
+
+##
+</file>
+
+<file path="HW3_ROMA\ROME_P1_GeneratedFiles\mux2to1tb.v">
+
+module mux2to1tb;
+    reg in1, in2, select;
+    wire out;
+    mux2to1 uut (.in1(in1), .in2(in2), .select(select), .out(out));
+    initial begin
+        in1 = 0; in2 = 1; select = 0; #10;
+        if (out !== 0) $finish;
+        in1 = 0; in2 = 1; select = 1; #10;
+        if (out !== 1) $finish;
+        $display("passed!");
+        $finish;
+    end
+endmodule
+
+</file>
+
+<file path="HW3_ROMA\ROME_P1_GeneratedFiles\mux4to1tb.v">
+
+module mux4to1tb;
+    reg [1:0] sel;
+    reg [3:0] in;
+    wire out;
+    mux4to1 uut (.sel(sel), .in(in), .out(out));
+    initial begin
+        in = 4'b1010;
+        sel = 2'b00; #10; if (out !== 0) $finish;
+        sel = 2'b01; #10; if (out !== 1) $finish;
+        sel = 2'b10; #10; if (out !== 0) $finish;
+        sel = 2'b11; #10; if (out !== 1) $finish;
+        $display("passed!");
+        $finish;
+    end
+endmodule
+
+</file>
+
+<file path="HW3_ROMA\ROME_P1_GeneratedFiles\mux8to1tb.v">
+
+module mux8to1tb;
+    reg [2:0] sel;
+    reg [7:0] in;
+    wire out;
+    mux8to1 uut (.sel(sel), .in(in), .out(out));
+    initial begin
+        in = 8'b10110010;
+        sel = 3'b000; #10; if (out !== 0) $finish;
+        sel = 3'b001; #10; if (out !== 1) $finish;
+        sel = 3'b100; #10; if (out !== 1) $finish;
+        sel = 3'b111; #10; if (out !== 1) $finish;
+        $display("passed!");
+        $finish;
+    end
+endmodule
+
+</file>
+
+<file path="HW3_ROMA\ROME_P1_GeneratedFiles\mux2to1\mux2to1.v">
+module mux2to1(input wire in1, input wire in2, input wire select, output wire out);
+  assign out = select ? in2 : in1;
+endmodule
+
+</file>
+
+<file path="HW3_ROMA\ROME_P1_GeneratedFiles\mux4to1\mux4to1.v">
+module mux2to1(input wire in1, input wire in2, input wire select, output wire out);
+  assign out = select ? in2 : in1;
+endmodule
+module mux4to1(input [1:0] sel, input [3:0] in, output reg out);
+  wire y0, y1, y;
+
+  mux2to1 m0(.in1(in[0]), .in2(in[1]), .select(sel[0]), .out(y0));
+  mux2to1 m1(.in1(in[2]), .in2(in[3]), .select(sel[0]), .out(y1));
+  mux2to1 m2(.in1(y0), .in2(y1), .select(sel[1]), .out(y));
+
+  always @* begin
+    out = y;
+  end
+endmodule
+
+</file>
+
+<file path="HW3_ROMA\ROME_P1_GeneratedFiles\mux8to1\mux8to1.v">
+module mux2to1(input wire in1, input wire in2, input wire select, output wire out);
+  assign out = select ? in2 : in1;
+endmodule
+module mux4to1(input wire [1:0] sel, input wire [3:0] in, output reg out);
+  wire w0, w1, w2;
+
+  mux2to1 u0 (.in1(in[0]), .in2(in[1]), .select(sel[0]), .out(w0));
+  mux2to1 u1 (.in1(in[2]), .in2(in[3]), .select(sel[0]), .out(w1));
+  mux2to1 u2 (.in1(w0),    .in2(w1),    .select(sel[1]), .out(w2));
+
+  always @* begin
+    out = w2;
+  end
+endmodule
+module mux8to1(input wire [2:0] sel, input wire [7:0] in, output wire out);
+  wire w_low, w_high, w_out;
+
+  mux4to1 u_low  (.sel(sel[1:0]), .in(in[3:0]), .out(w_low));
+  mux4to1 u_high (.sel(sel[1:0]), .in(in[7:4]), .out(w_high));
+  mux2to1 u_top  (.in1(w_low), .in2(w_high), .select(sel[2]), .out(w_out));
+
+  assign out = w_out;
+endmodule
+
+</file>
+
+<file path="HW3_ROMA\ROME_P1_GeneratedFiles\sample_data\anscombe.json">
+[
+  {"Series":"I", "X":10.0, "Y":8.04},
+  {"Series":"I", "X":8.0, "Y":6.95},
+  {"Series":"I", "X":13.0, "Y":7.58},
+  {"Series":"I", "X":9.0, "Y":8.81},
+  {"Series":"I", "X":11.0, "Y":8.33},
+  {"Series":"I", "X":14.0, "Y":9.96},
+  {"Series":"I", "X":6.0, "Y":7.24},
+  {"Series":"I", "X":4.0, "Y":4.26},
+  {"Series":"I", "X":12.0, "Y":10.84},
+  {"Series":"I", "X":7.0, "Y":4.81},
+  {"Series":"I", "X":5.0, "Y":5.68},
+
+  {"Series":"II", "X":10.0, "Y":9.14},
+  {"Series":"II", "X":8.0, "Y":8.14},
+  {"Series":"II", "X":13.0, "Y":8.74},
+  {"Series":"II", "X":9.0, "Y":8.77},
+  {"Series":"II", "X":11.0, "Y":9.26},
+  {"Series":"II", "X":14.0, "Y":8.10},
+  {"Series":"II", "X":6.0, "Y":6.13},
+  {"Series":"II", "X":4.0, "Y":3.10},
+  {"Series":"II", "X":12.0, "Y":9.13},
+  {"Series":"II", "X":7.0, "Y":7.26},
+  {"Series":"II", "X":5.0, "Y":4.74},
+
+  {"Series":"III", "X":10.0, "Y":7.46},
+  {"Series":"III", "X":8.0, "Y":6.77},
+  {"Series":"III", "X":13.0, "Y":12.74},
+  {"Series":"III", "X":9.0, "Y":7.11},
+  {"Series":"III", "X":11.0, "Y":7.81},
+  {"Series":"III", "X":14.0, "Y":8.84},
+  {"Series":"III", "X":6.0, "Y":6.08},
+  {"Series":"III", "X":4.0, "Y":5.39},
+  {"Series":"III", "X":12.0, "Y":8.15},
+  {"Series":"III", "X":7.0, "Y":6.42},
+  {"Series":"III", "X":5.0, "Y":5.73},
+
+  {"Series":"IV", "X":8.0, "Y":6.58},
+  {"Series":"IV", "X":8.0, "Y":5.76},
+  {"Series":"IV", "X":8.0, "Y":7.71},
+  {"Series":"IV", "X":8.0, "Y":8.84},
+  {"Series":"IV", "X":8.0, "Y":8.47},
+  {"Series":"IV", "X":8.0, "Y":7.04},
+  {"Series":"IV", "X":8.0, "Y":5.25},
+  {"Series":"IV", "X":19.0, "Y":12.50},
+  {"Series":"IV", "X":8.0, "Y":5.56},
+  {"Series":"IV", "X":8.0, "Y":7.91},
+  {"Series":"IV", "X":8.0, "Y":6.89}
+]
+
+</file>
+
+<file path="HW3_ROMA\ROME_P1_GeneratedFiles\sample_data\README.md">
+This directory includes a few sample datasets to get you started.
+
+*   `california_housing_data*.csv` is California housing data from the 1990 US
+    Census; more information is available at:
+    https://docs.google.com/document/d/e/2PACX-1vRhYtsvc5eOR2FWNCwaBiKL6suIOrxJig8LcSBbmCbyYsayia_DvPOOBlXZ4CAlQ5nlDD8kTaIDRwrN/pub
+
+*   `mnist_*.csv` is a small sample of the
+    [MNIST database](https://en.wikipedia.org/wiki/MNIST_database), which is
+    described at: http://yann.lecun.com/exdb/mnist/
+
+*   `anscombe.json` contains a copy of
+    [Anscombe's quartet](https://en.wikipedia.org/wiki/Anscombe%27s_quartet); it
+    was originally described in
+
+    Anscombe, F. J. (1973). 'Graphs in Statistical Analysis'. American
+    Statistician. 27 (1): 17-21. JSTOR 2682899.
+
+    and our copy was prepared by the
+    [vega_datasets library](https://github.com/altair-viz/vega_datasets/blob/4f67bdaad10f45e3549984e17e1b3088c731503d/vega_datasets/_data/anscombe.json).
+
+</file>
