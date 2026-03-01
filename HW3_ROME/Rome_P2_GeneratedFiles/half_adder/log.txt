@@ -3,7 +3,14 @@ user: //We will be generating a 8-bit ripple-carry adder hierarchically in Veril
 module half_adder(input wire a, input wire b, output wire sum, output wire carry)
 //Insert code here
 endmodule
-assistant: module half_adder(input wire a, input wire b, output wire sum, output wire carry);
-  assign sum = a ^ b;
-  assign carry = a & b;
+assistant: module half_adder(
+    input wire a, 
+    input wire b, 
+    output wire sum, 
+    output wire carry
+);
+
+assign sum = a ^ b;
+assign carry = a & b;
+
 endmodule

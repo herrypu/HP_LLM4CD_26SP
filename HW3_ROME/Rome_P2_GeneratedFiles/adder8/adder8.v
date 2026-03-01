@@ -1,26 +1,39 @@
-module half_adder(input wire a, input wire b, output wire sum, output wire carry);
-  assign sum = a ^ b;
-  assign carry = a & b;
+module adder8(input [7:0] a, input [7:0] b, input cin, output [7:0] sum, output cout);
+wire w1, w2, w3, w4, w5, w6, w7;
+full_adder FA1(a[0], b[0], cin, sum[0], w1);
+full_adder FA2(a[1], b[1], w1, sum[1], w2);
+full_adder FA3(a[2], b[2], w2, sum[2], w3);
+full_adder FA4(a[3], b[3], w3, sum[3], w4);
+full_adder FA5(a[4], b[4], w4, sum[4], w5);
+full_adder FA6(a[5], b[5], w5, sum[5], w6);
+full_adder FA7(a[6], b[6], w6, sum[6], w7);
+full_adder FA8(a[7], b[7], w7, sum[7], cout);
 endmodule
-module full_adder(input wire a, input wire b, input wire cin, output wire sum, output wire cout);
-  wire s1, c1, c2;
-
-  half_adder ha1(.a(a), .b(b), .sum(s1), .carry(c1));
-  half_adder ha2(.a(s1), .b(cin), .sum(sum), .carry(c2));
-
-  assign cout = c1 | c2;
+module adder4(input [3:0] a, input [3:0] b, input cin, output [3:0] sum, output cout);
+wire w1, w2, w3, w4, w5;
+full_adder FA1(a[0], b[0], cin, sum[0], w1);
+full_adder FA2(a[1], b[1], w1, sum[1], w2);
+full_adder FA3(a[2], b[2], w2, sum[2], w3);
+full_adder FA4(a[3], b[3], w3, sum[3], cout);
 endmodule
-module adder4(input wire [3:0] a, input wire [3:0] b, input wire cin, output wire [3:0] sum, output wire cout);
-  wire c1, c2, c3;
-
-  full_adder fa0(.a(a[0]), .b(b[0]), .cin(cin),  .sum(sum[0]), .cout(c1));
-  full_adder fa1(.a(a[1]), .b(b[1]), .cin(c1),   .sum(sum[1]), .cout(c2));
-  full_adder fa2(.a(a[2]), .b(b[2]), .cin(c2),   .sum(sum[2]), .cout(c3));
-  full_adder fa3(.a(a[3]), .b(b[3]), .cin(c3),   .sum(sum[3]), .cout(cout));
+module half_adder(
+    input wire a, 
+    input wire b, 
+    output wire sum, 
+    output wire carry
+);
+assign sum = a ^ b;
+assign carry = a & b;
 endmodule
-module adder8(input wire [7:0] a, input wire [7:0] b, input wire cin, output wire [7:0] sum, output wire cout);
-  wire c4;
-
-  adder4 lo(.a(a[3:0]), .b(b[3:0]), .cin(cin), .sum(sum[3:0]), .cout(c4));
-  adder4 hi(.a(a[7:4]), .b(b[7:4]), .cin(c4),  .sum(sum[7:4]), .cout(cout));
+module full_adder(
+    input wire a, 
+    input wire b, 
+    input wire cin, 
+    output wire sum, 
+    output wire cout
+);
+wire w1, w2, w3;
+half_adder HA1(a, b, w1, w2);
+half_adder HA2(w1, cin, sum, w3);
+assign cout = w2 | w3;
 endmodule
