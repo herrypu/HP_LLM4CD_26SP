@@ -30,14 +30,6 @@ These notebooks demonstrate the hierarchical decomposition and verification feed
 * **[ROME_submission_P1.ipynb](./HW3_ROME/ROME_submission_P1.ipynb)**: Part I submission featuring the provided Mux hierarchy demo (2-to-1, 4-to-1, and 8-to-1 multiplexers).
 * **[ROME_Part2&3.ipynb](./HW3_ROME/ROME_Part2&3.ipynb)**: Completion of Parts II and III, featuring the Ripple-carry adder extension (half-adder to 8-bit adder) and automated debugging logs.
 
-## HW4_TestBench
-### Final Reports
-* **[TestbenchGen_Report.pdf](./HW4_TestBench/TestbenchGen_Report.pdf)**: Final report detailing the LLM-aided testbench generation pipeline, explaining golden models and test patterns, and demonstrating automated bug detection. (Markdown version: **[TestbenchGen_Report.md](./HW4_TestBench/TestbenchGen_Report.md)**).
-
-### Implementation Notebooks
-This notebook executes the end-to-end LLM-driven testbench pipeline:
-* **[testbenchgen_hw.ipynb](./HW4_TestBench/testbenchgen_hw.ipynb)**: Main executed notebook demonstrating the pipeline (initial testbench → Python golden model → expected patterns → final checking testbench) for tutorial examples (Mux, Adder, BCD) and a custom Priority Encoder.
-
 ### Project Structure
 
 ```text
@@ -101,29 +93,6 @@ This notebook executes the end-to-end LLM-driven testbench pipeline:
 │   ├── ROME_Report.md              # HW3 Final consolidated report (Markdown)
 │   ├── ROME_Report.pdf             # HW3 Final consolidated report (PDF)
 │   └── ROME_submission_P1.ipynb    # Part I final submission notebook
-│
-├── HW4_TestBench/
-│   ├── TestbenchGen_Report.pdf     # HW4 Final consolidated report (PDF)
-│   ├── TestbenchGen_Report.md      # HW4 Final consolidated report (Markdown)
-│   ├── testbenchgen_hw.ipynb       # Main executed notebook for the assignment
-│   ├── Archive/                    # Archived backups and earlier notebook versions
-│   │   ├── HW_TestbenchGen_Artifacts.zip
-│   │   ├── Part3_4_Custom_Artifacts.zip
-│   │   ├── testbenchgen_hw_t0.ipynb.ipynb
-│   │   └── testbenchgen_hw_t1.ipynb
-│   ├── Docs/                       # Assignment instructions and templates
-│   │   ├── Enhanced_Testbench_Generation_Assignment.pdf
-│   │   └── Enhanced_LLM_Aided_Testbench_Generation... # Template notebooks
-│   └── GeneratedArtifacts/         # Pipeline output files and Verilog sources
-│       ├── adder/                  # Artifacts for 4-bit adder
-│       ├── binary_to_bcd/          # Artifacts for binary-to-bcd converter
-│       ├── custom/                 # Artifacts for custom priority encoder
-│       ├── mux/                    # Artifacts for 2-to-1 multiplexer
-│       ├── adder4bit.v             # Verilog source for adder
-│       ├── binary_to_bcd_converter.v # Verilog source for BCD converter
-│       ├── mux2to1.v               # Verilog source for multiplexer
-│       ├── priority_encoder.v      # Verilog source for custom module
-│       └── priority_encoder_buggy.v # Bug injected version for Part IV demonstration
 │
 ├── .gitignore
 ├── LICENSE
